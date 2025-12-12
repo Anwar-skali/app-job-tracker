@@ -28,6 +28,7 @@ export default function SignupScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const onSubmit = async () => {
+    console.log('Signup button clicked');
     setError(null);
     
     if (!name.trim()) {
@@ -67,9 +68,13 @@ export default function SignupScreen() {
     
     try {
       setLoading(true);
+      console.log('Calling signup service...');
       await signup({ name: name.trim(), email: email.trim(), password });
-      // La navigation se fait automatiquement via le NavigationGuard
+      console.log('Signup successful, redirecting...');
+      // Rediriger vers les tabs après inscription réussie
+      router.replace('/(tabs)');
     } catch (e) {
+      console.error('Signup error:', e);
       setError((e as Error).message || 'Erreur lors de l\'inscription. Veuillez réessayer.');
     } finally {
       setLoading(false);
@@ -186,6 +191,7 @@ export default function SignupScreen() {
             style={[styles.button, loading && styles.buttonDisabled]}
             onPress={onSubmit}
             disabled={loading}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
@@ -295,15 +301,19 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 8,
+    minHeight: 50,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 5,
+    cursor: 'pointer',
   },
   buttonDisabled: {
     opacity: 0.6,
+    cursor: 'not-allowed',
   },
   buttonText: {
     color: '#fff',

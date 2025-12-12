@@ -50,7 +50,8 @@ export default function LoginScreen() {
     try {
       setLoading(true);
       await login({ email, password });
-      // La navigation se fait automatiquement via le NavigationGuard
+      // Rediriger vers les tabs après connexion réussie
+      router.replace('/(tabs)');
     } catch (e) {
       setError((e as Error).message || 'Erreur de connexion. Vérifiez vos identifiants.');
     } finally {
@@ -127,6 +128,7 @@ export default function LoginScreen() {
             style={[styles.button, loading && styles.buttonDisabled]}
             onPress={onSubmit}
             disabled={loading}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
@@ -231,15 +233,19 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 8,
+    minHeight: 50,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 5,
+    cursor: 'pointer',
   },
   buttonDisabled: {
     opacity: 0.6,
+    cursor: 'not-allowed',
   },
   buttonText: {
     color: '#fff',
