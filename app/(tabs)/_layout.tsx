@@ -11,8 +11,15 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarLabel: 'Home',
+          title: 'Dashboard',
+          tabBarLabel: 'Dashboard',
+        }}
+      />
+      <Tabs.Screen
+        name="applications"
+        options={{
+          title: 'Candidatures',
+          tabBarLabel: 'Candidatures',
         }}
       />
       <Tabs.Screen
@@ -20,6 +27,13 @@ export default function TabsLayout() {
         options={{
           title: 'Profil',
           tabBarLabel: 'Profil',
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Paramètres',
+          tabBarLabel: 'Paramètres',
         }}
       />
     </Tabs>

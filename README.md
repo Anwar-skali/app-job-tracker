@@ -1,14 +1,112 @@
 # Job Tracker App
 
-React Native mobile application built with Expo for tracking job applications.
+Application mobile React Native construite avec Expo pour suivre les candidatures d'emploi.
 
-## Getting Started
+## 📋 Objectif
 
-### Prerequisites
+Créer une application mobile permettant aux utilisateurs de suivre l'ensemble de leurs candidatures (offres d'emploi, entretiens, réponses, relances) de manière simple, rapide et intuitive.
 
-- Node.js (v18 or higher)
-- npm or yarn
-- Expo CLI
+## 🎯 Cible
+
+- Demandeurs d'emploi
+- Étudiants en recherche de stage ou d'alternance
+- Professionnels en veille active
+
+## ✨ Fonctionnalités
+
+### ✅ Implémentées
+
+- **Authentification & Profil utilisateur**
+  - Écran de connexion
+  - Écran d'inscription
+  - Écran de profil utilisateur
+  - Service d'authentification (login/logout)
+  - Stockage sécurisé des données utilisateur
+
+- **Gestion des candidatures**
+  - Ajouter/Modifier/Supprimer une candidature
+  - Champs : Titre, Entreprise, Lieu, Lien, Type de contrat, Date, Statut, Notes, Documents
+  - Consultation des détails
+  - Stockage SQLite local
+
+- **Dashboard / Statistiques**
+  - Nombre total de candidatures
+  - Répartition par statut (graphiques)
+  - Nombre d'entretiens obtenus
+  - Taux de réussite
+  - Évolution dans le temps
+
+- **Recherche et filtres**
+  - Recherche par titre/entreprise
+  - Filtres par statut, type de contrat, date
+
+### 🚧 À venir
+
+- **Notifications**
+  - Rappels pour relancer les recruteurs
+  - Notifications de changement de statut
+
+- **Authentification sociale**
+  - Google / Apple Login
+  - Synchronisation cloud (Supabase/Firebase)
+
+## 🛠️ Stack Technique
+
+- **Frontend**: React Native + Expo SDK 54
+- **Langage**: TypeScript
+- **Navigation**: Expo Router (file-based routing)
+- **Gestion d'état**: Context API (Auth) + Zustand (Theme)
+- **Stockage local**: SQLite (expo-sqlite)
+- **Stockage sécurisé**: Expo SecureStore (tokens)
+- **Design**: Palette bleue/grise, icônes Feather (@expo/vector-icons)
+- **Mode sombre**: Optionnel (Zustand)
+
+## 📁 Architecture
+
+```
+app/                    # Expo Router pages (file-based routing)
+  ├── (auth)/           # Groupe d'authentification
+  │   ├── login.tsx
+  │   └── signup.tsx
+  └── (tabs)/           # Navigation par onglets
+      ├── index.tsx     # Dashboard
+      ├── applications.tsx
+      └── profile.tsx
+src/
+  ├── components/       # Composants UI réutilisables
+  │   ├── Button.tsx
+  │   ├── Input.tsx
+  │   └── Card.tsx
+  ├── constants/        # Constantes (couleurs, thème, statuts)
+  │   ├── colors.ts
+  │   ├── theme.ts
+  │   └── status.ts
+  ├── hooks/            # Hooks React personnalisés
+  │   └── useAuth.ts
+  ├── providers/        # Context Providers
+  │   └── AuthProvider.tsx
+  ├── services/         # Services (API, auth, database)
+  │   ├── auth.ts
+  │   ├── storage.ts
+  │   ├── database.ts   # SQLite
+  │   └── jobApplication.ts
+  ├── store/            # State management (Zustand)
+  │   └── themeStore.ts
+  ├── types/            # Types TypeScript
+  │   ├── auth.ts
+  │   ├── jobApplication.ts
+  │   └── index.ts
+  └── utils/            # Fonctions utilitaires
+assets/                 # Images, fonts, etc.
+```
+
+## 🚀 Getting Started
+
+### Prérequis
+
+- Node.js (v18 ou supérieur)
+- npm ou yarn
+- Expo Go app sur iOS/Android (SDK 54)
 
 ### Installation
 
@@ -17,34 +115,32 @@ npm install
 npm start
 ```
 
-Press `i` for iOS simulator, `a` for Android emulator, or scan QR code with Expo Go app.
+Appuyez sur `i` pour iOS simulator, `a` pour Android emulator, ou scannez le QR code avec l'app Expo Go.
 
-## Project Structure
+### Scripts Disponibles
 
-```
-app/                    # Expo Router pages
-src/
-  ├── components/       # Reusable UI components
-  ├── screens/          # Screen components
-  ├── services/         # API and business logic
-  ├── utils/            # Helper functions
-  ├── types/            # TypeScript types
-  ├── hooks/            # Custom React hooks
-  └── constants/        # App constants
-assets/                 # Images, fonts, etc.
-```
+- `npm start` - Démarrer le serveur Expo
+- `npm run android` - Lancer sur Android
+- `npm run ios` - Lancer sur iOS
+- `npm run web` - Lancer sur web
 
-## Available Scripts
+## 🎨 Design
 
-- `npm start` - Start Expo development server
-- `npm run android` - Run on Android
-- `npm run ios` - Run on iOS
-- `npm run web` - Run on web
+- **Palette**: Bleue/Grise (#2563EB, #64748B)
+- **Icônes**: Feather Icons via @expo/vector-icons
+- **Mode sombre**: Optionnel (toggle dans les paramètres)
 
-## Team Collaboration
+## 📝 Notes de Développement
 
-- Create feature branches for your work
-- Commit often with clear messages
-- Pull before pushing to avoid conflicts
-- Test changes before creating PRs
+- **Authentification**: Implémentée avec Expo SecureStore pour le stockage sécurisé des tokens
+- **Base de données**: SQLite pour le stockage local des candidatures
+- **Navigation**: Utilise Expo Router avec file-based routing et groupes de routes
+- **TypeScript**: Configuration stricte activée
+- **SDK**: Expo SDK 54 (compatible avec Expo Go iOS/Android)
 
+## 👥 Collaboration Équipe
+
+- Créer des branches feature pour votre travail
+- Commit souvent avec des messages clairs
+- Pull avant de push pour éviter les conflits
+- Tester les changements avant de créer des PRs

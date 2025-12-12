@@ -5,4 +5,4 @@ export interface User {
 }
 
 export * from './auth';
-
+export * from './jobApplication';

@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useAuth } from '@/hooks/useAuth';
-import { Colors } from '@/constants';
+import { Colors } from '@/constants/colors';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
