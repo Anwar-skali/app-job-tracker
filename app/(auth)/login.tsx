@@ -4,7 +4,6 @@ import {
   View,
   Text,
   TextInput,
-  StyleSheet,
   Pressable,
   ActivityIndicator,
   ScrollView,
@@ -13,7 +12,7 @@ import {
 } from 'react-native';
 import { useAuth } from '@/hooks/useAuth';
 import { validateEmail } from '@/utils';
-import { Colors } from '@/constants/colors';
+import { Feather } from '@expo/vector-icons';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -50,7 +49,6 @@ export default function LoginScreen() {
     try {
       setLoading(true);
       await login({ email, password });
-      // Rediriger vers les tabs après connexion réussie
       router.replace('/(tabs)');
     } catch (e) {
       setError((e as Error).message || 'Erreur de connexion. Vérifiez vos identifiants.');
@@ -61,47 +59,52 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      className="flex-1 bg-white"
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerClassName="flex-grow justify-center px-6 py-12"
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.header}>
-          <Text style={styles.title}>Connexion</Text>
-          <Text style={styles.subtitle}>
+        <View className="mb-10 items-center">
+          <View className="mb-4 h-16 w-16 items-center justify-center rounded-2xl bg-primary-100">
+            <Feather name="briefcase" size={32} color="#2563EB" />
+          </View>
+          <Text className="mb-2 text-3xl font-bold text-gray-900">Connexion</Text>
+          <Text className="text-center text-base text-gray-600">
             Connectez-vous pour gérer vos candidatures
           </Text>
         </View>
 
-        <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              placeholder="exemple@email.com"
-              placeholderTextColor={Colors.textSecondary}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="email-address"
-              style={[styles.input, error && !email && styles.inputError]}
-              value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                setError(null);
-              }}
-              editable={!loading}
-            />
+        <View className="w-full">
+          <View className="mb-5">
+            <Text className="mb-2 text-sm font-semibold text-gray-700">Email</Text>
+            <View className={`rounded-xl border-2 bg-gray-50 ${error && !email ? 'border-red-500' : 'border-gray-200'}`}>
+              <TextInput
+                placeholder="exemple@email.com"
+                placeholderTextColor="#9CA3AF"
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                className="px-4 py-4 text-base text-gray-900"
+                value={email}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  setError(null);
+                }}
+                editable={!loading}
+              />
+            </View>
           </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Mot de passe</Text>
-            <View style={styles.passwordContainer}>
+          <View className="mb-5">
+            <Text className="mb-2 text-sm font-semibold text-gray-700">Mot de passe</Text>
+            <View className={`relative rounded-xl border-2 bg-gray-50 ${error && !password ? 'border-red-500' : 'border-gray-200'}`}>
               <TextInput
                 placeholder="••••••••"
-                placeholderTextColor={Colors.textSecondary}
+                placeholderTextColor="#9CA3AF"
                 secureTextEntry={!showPassword}
-                style={[styles.input, styles.passwordInput, error && !password && styles.inputError]}
+                className="px-4 py-4 pr-12 text-base text-gray-900"
                 value={password}
                 onChangeText={(text) => {
                   setPassword(text);
@@ -110,22 +113,22 @@ export default function LoginScreen() {
                 editable={!loading}
               />
               <Pressable
-                style={styles.eyeButton}
+                className="absolute right-3 top-4 p-1"
                 onPress={() => setShowPassword(!showPassword)}
               >
-                <Text style={styles.eyeText}>{showPassword ? '👁️' : '👁️‍🗨️'}</Text>
+                <Feather name={showPassword ? 'eye' : 'eye-off'} size={20} color="#6B7280" />
               </Pressable>
             </View>
           </View>
 
           {error ? (
-            <View style={styles.errorContainer}>
-              <Text style={styles.error}>{error}</Text>
+            <View className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4">
+              <Text className="text-center text-sm text-red-600">{error}</Text>
             </View>
           ) : null}
 
           <Pressable
-            style={[styles.button, loading && styles.buttonDisabled]}
+            className={`mb-6 rounded-xl bg-primary-500 py-4 shadow-lg shadow-primary-500/30 ${loading ? 'opacity-60' : ''}`}
             onPress={onSubmit}
             disabled={loading}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -133,15 +136,15 @@ export default function LoginScreen() {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>Se connecter</Text>
+              <Text className="text-center text-base font-semibold text-white">Se connecter</Text>
             )}
           </Pressable>
 
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Pas encore de compte ? </Text>
+          <View className="flex-row justify-center items-center">
+            <Text className="text-sm text-gray-600">Pas encore de compte ? </Text>
             <Link href="/(auth)/signup" asChild>
               <Pressable>
-                <Text style={styles.link}>S'inscrire</Text>
+                <Text className="text-sm font-semibold text-primary-500">S'inscrire</Text>
               </Pressable>
             </Link>
           </View>
@@ -150,122 +153,3 @@ export default function LoginScreen() {
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 24,
-  },
-  header: {
-    marginBottom: 32,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '700',
-    marginBottom: 8,
-    color: Colors.text,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-  },
-  form: {
-    width: '100%',
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.text,
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: Colors.text,
-    backgroundColor: '#f9f9f9',
-  },
-  inputError: {
-    borderColor: Colors.error,
-  },
-  passwordContainer: {
-    position: 'relative',
-  },
-  passwordInput: {
-    paddingRight: 50,
-  },
-  eyeButton: {
-    position: 'absolute',
-    right: 12,
-    top: 16,
-    padding: 4,
-  },
-  eyeText: {
-    fontSize: 20,
-  },
-  errorContainer: {
-    backgroundColor: Colors.error + '15',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: Colors.error + '30',
-  },
-  error: {
-    color: Colors.error,
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  button: {
-    backgroundColor: Colors.primary,
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-    minHeight: 50,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-    cursor: 'pointer',
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-    cursor: 'not-allowed',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  footerText: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-  },
-  link: {
-    fontSize: 14,
-    color: Colors.primary,
-    fontWeight: '600',
-  },
-});
-

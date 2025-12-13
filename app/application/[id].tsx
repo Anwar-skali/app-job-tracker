@@ -2,17 +2,17 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { getApplicationById, deleteApplication } from '@/services/jobApplication';
 import { JobApplication } from '@/types/jobApplication';
 import { StatusConfig, ContractTypeLabels } from '@/constants';
-import { Colors } from '@/constants/colors';
+import { Feather } from '@expo/vector-icons';
 
 export default function ApplicationDetailScreen() {
   const router = useRouter();
@@ -70,8 +70,8 @@ export default function ApplicationDetailScreen() {
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <Text>Chargement...</Text>
+      <View className="flex-1 items-center justify-center bg-gray-50">
+        <ActivityIndicator size="large" color="#2563EB" />
       </View>
     );
   }
@@ -83,41 +83,49 @@ export default function ApplicationDetailScreen() {
   const statusConfig = StatusConfig[application.status];
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.titleContainer}>
-          <Text style={styles.title}>{application.title}</Text>
-          <View style={[styles.statusBadge, { backgroundColor: statusConfig.color + '20' }]}>
-            <Text style={[styles.statusText, { color: statusConfig.color }]}>
+    <ScrollView className="flex-1 bg-gray-50">
+      <View className="bg-white px-4 py-6 border-b border-gray-200">
+        <View className="mb-3 flex-row items-start justify-between">
+          <View className="flex-1 mr-3">
+            <Text className="mb-2 text-2xl font-bold text-gray-900">{application.title}</Text>
+            <Text className="text-lg text-gray-600">{application.company}</Text>
+          </View>
+          <View
+            className="rounded-full px-4 py-2"
+            style={{ backgroundColor: statusConfig.color + '20' }}
+          >
+            <Text
+              className="text-sm font-semibold"
+              style={{ color: statusConfig.color }}
+            >
               {statusConfig.label}
             </Text>
           </View>
         </View>
-        <Text style={styles.company}>{application.company}</Text>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Informations</Text>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Lieu :</Text>
-          <Text style={styles.infoValue}>{application.location}</Text>
+      <View className="bg-white px-4 py-5 mb-2 border-b border-gray-200">
+        <Text className="mb-4 text-lg font-bold text-gray-900">Informations</Text>
+        <View className="mb-3 flex-row">
+          <Text className="w-32 text-base text-gray-600">Lieu :</Text>
+          <Text className="flex-1 text-base text-gray-900">{application.location}</Text>
         </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Type de contrat :</Text>
-          <Text style={styles.infoValue}>
+        <View className="mb-3 flex-row">
+          <Text className="w-32 text-base text-gray-600">Type de contrat :</Text>
+          <Text className="flex-1 text-base text-gray-900">
             {ContractTypeLabels[application.contractType]}
           </Text>
         </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Date de candidature :</Text>
-          <Text style={styles.infoValue}>
+        <View className="mb-3 flex-row">
+          <Text className="w-32 text-base text-gray-600">Date de candidature :</Text>
+          <Text className="flex-1 text-base text-gray-900">
             {new Date(application.applicationDate).toLocaleDateString('fr-FR')}
           </Text>
         </View>
         {application.jobUrl && (
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Lien de l'annonce :</Text>
-            <Text style={styles.infoValue} numberOfLines={1}>
+          <View className="mb-3 flex-row">
+            <Text className="w-32 text-base text-gray-600">Lien de l'annonce :</Text>
+            <Text className="flex-1 text-base text-primary-500" numberOfLines={1}>
               {application.jobUrl}
             </Text>
           </View>
@@ -125,136 +133,38 @@ export default function ApplicationDetailScreen() {
       </View>
 
       {application.notes && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Notes</Text>
-          <Text style={styles.notes}>{application.notes}</Text>
+        <View className="bg-white px-4 py-5 mb-2 border-b border-gray-200">
+          <Text className="mb-3 text-lg font-bold text-gray-900">Notes</Text>
+          <Text className="text-base leading-6 text-gray-900">{application.notes}</Text>
         </View>
       )}
 
       {application.documents && application.documents.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Documents joints</Text>
+        <View className="bg-white px-4 py-5 mb-2 border-b border-gray-200">
+          <Text className="mb-3 text-lg font-bold text-gray-900">Documents joints</Text>
           {application.documents.map((doc, index) => (
-            <Text key={index} style={styles.document}>{doc}</Text>
+            <View key={index} className="mb-2 flex-row items-center">
+              <Feather name="file" size={18} color="#2563EB" />
+              <Text className="ml-2 text-base text-primary-500">{doc}</Text>
+            </View>
           ))}
         </View>
       )}
 
-      <View style={styles.actions}>
+      <View className="flex-row gap-3 px-4 py-6">
         <TouchableOpacity
-          style={styles.editButton}
-              onPress={() => router.push(`/application/${application.id}/edit` as any)}
+          className="flex-1 rounded-xl bg-primary-500 py-4 shadow-lg shadow-primary-500/30"
+          onPress={() => router.push(`/application/${application.id}/edit` as any)}
         >
-          <Text style={styles.editButtonText}>Modifier</Text>
+          <Text className="text-center text-base font-semibold text-white">Modifier</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-          <Text style={styles.deleteButtonText}>Supprimer</Text>
+        <TouchableOpacity
+          className="flex-1 rounded-xl bg-red-500 py-4 shadow-lg"
+          onPress={handleDelete}
+        >
+          <Text className="text-center text-base font-semibold text-white">Supprimer</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  header: {
-    padding: 16,
-    backgroundColor: Colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  titleContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: Colors.text,
-    flex: 1,
-    marginRight: 8,
-  },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  statusText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  company: {
-    fontSize: 18,
-    color: Colors.textSecondary,
-  },
-  section: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: Colors.text,
-    marginBottom: 12,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    marginBottom: 8,
-  },
-  infoLabel: {
-    fontSize: 16,
-    color: Colors.textSecondary,
-    width: 140,
-  },
-  infoValue: {
-    fontSize: 16,
-    color: Colors.text,
-    flex: 1,
-  },
-  notes: {
-    fontSize: 16,
-    color: Colors.text,
-    lineHeight: 24,
-  },
-  document: {
-    fontSize: 16,
-    color: Colors.primary,
-    marginBottom: 4,
-  },
-  actions: {
-    flexDirection: 'row',
-    padding: 16,
-    gap: 12,
-  },
-  editButton: {
-    flex: 1,
-    backgroundColor: Colors.primary,
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  editButtonText: {
-    color: Colors.background,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  deleteButton: {
-    flex: 1,
-    backgroundColor: Colors.error,
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  deleteButtonText: {
-    color: Colors.background,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
-

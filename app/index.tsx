@@ -1,7 +1,6 @@
 import { Redirect } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { Colors } from '@/constants/colors';
+import { View, ActivityIndicator } from 'react-native';
 
 export default function Index() {
   const { status } = useAuth();
@@ -9,8 +8,8 @@ export default function Index() {
   // Attendre que l'auth soit déterminée
   if (status === 'loading') {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <View className="flex-1 items-center justify-center bg-white">
+        <ActivityIndicator size="large" color="#2563EB" />
       </View>
     );
   }
@@ -22,13 +21,4 @@ export default function Index() {
 
   return <Redirect href="/(auth)/login" />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: Colors.background,
-  },
-});
 

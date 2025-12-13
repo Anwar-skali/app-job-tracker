@@ -2,16 +2,16 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { getApplicationStats } from '@/services/jobApplication';
 import { ApplicationStats, ApplicationStatus } from '@/types/jobApplication';
 import { StatusConfig } from '@/constants';
-import { Colors } from '@/constants/colors';
+import { Feather } from '@expo/vector-icons';
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -41,72 +41,78 @@ export default function DashboardScreen() {
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <Text>Chargement...</Text>
+      <View className="flex-1 items-center justify-center bg-gray-50">
+        <ActivityIndicator size="large" color="#2563EB" />
       </View>
     );
   }
 
   if (!stats) {
     return (
-      <View style={styles.container}>
-        <Text>Aucune donnée disponible</Text>
+      <View className="flex-1 items-center justify-center bg-gray-50">
+        <Text className="text-gray-500">Aucune donnée disponible</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Dashboard</Text>
+    <ScrollView className="flex-1 bg-gray-50">
+      <View className="px-4 pt-6 pb-4">
+        <Text className="mb-2 text-3xl font-bold text-gray-900">Dashboard</Text>
+        <Text className="text-gray-600">Vue d'ensemble de vos candidatures</Text>
       </View>
 
       {/* Statistiques principales */}
-      <View style={styles.statsGrid}>
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>{stats.total}</Text>
-          <Text style={styles.statLabel}>Total candidatures</Text>
+      <View className="flex-row gap-3 px-4 mb-4">
+        <View className="flex-1 rounded-2xl bg-white p-5 shadow-sm border border-gray-100">
+          <View className="mb-2 h-10 w-10 items-center justify-center rounded-xl bg-primary-100">
+            <Feather name="briefcase" size={20} color="#2563EB" />
+          </View>
+          <Text className="mb-1 text-3xl font-bold text-primary-500">{stats.total}</Text>
+          <Text className="text-xs text-gray-600">Total candidatures</Text>
         </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>{stats.interviews}</Text>
-          <Text style={styles.statLabel}>Entretiens</Text>
+        <View className="flex-1 rounded-2xl bg-white p-5 shadow-sm border border-gray-100">
+          <View className="mb-2 h-10 w-10 items-center justify-center rounded-xl bg-purple-100">
+            <Feather name="users" size={20} color="#9333EA" />
+          </View>
+          <Text className="mb-1 text-3xl font-bold text-purple-600">{stats.interviews}</Text>
+          <Text className="text-xs text-gray-600">Entretiens</Text>
         </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>{stats.successRate.toFixed(1)}%</Text>
-          <Text style={styles.statLabel}>Taux de réussite</Text>
+        <View className="flex-1 rounded-2xl bg-white p-5 shadow-sm border border-gray-100">
+          <View className="mb-2 h-10 w-10 items-center justify-center rounded-xl bg-green-100">
+            <Feather name="trending-up" size={20} color="#10B981" />
+          </View>
+          <Text className="mb-1 text-3xl font-bold text-green-600">{stats.successRate.toFixed(1)}%</Text>
+          <Text className="text-xs text-gray-600">Taux de réussite</Text>
         </View>
       </View>
 
       {/* Répartition par statut */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Répartition par statut</Text>
+      <View className="mx-4 mb-4 rounded-2xl bg-white p-5 shadow-sm border border-gray-100">
+        <Text className="mb-4 text-xl font-bold text-gray-900">Répartition par statut</Text>
         {Object.entries(stats.byStatus).map(([status, count]) => {
           const statusConfig = StatusConfig[status as ApplicationStatus];
           const percentage = stats.total > 0 ? (count / stats.total) * 100 : 0;
 
           return (
-            <View key={status} style={styles.statusRow}>
-              <View style={styles.statusInfo}>
+            <View key={status} className="mb-4 flex-row items-center">
+              <View className="mr-3 flex-row items-center w-28">
                 <View
-                  style={[
-                    styles.statusIndicator,
-                    { backgroundColor: statusConfig.color },
-                  ]}
+                  className="mr-2 h-3 w-3 rounded-full"
+                  style={{ backgroundColor: statusConfig.color }}
                 />
-                <Text style={styles.statusLabel}>{statusConfig.label}</Text>
+                <Text className="text-sm text-gray-700">{statusConfig.label}</Text>
               </View>
-              <View style={styles.statusBarContainer}>
+              <View className="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">
                 <View
-                  style={[
-                    styles.statusBar,
-                    {
-                      width: `${percentage}%`,
-                      backgroundColor: statusConfig.color,
-                    },
-                  ]}
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${percentage}%`,
+                    backgroundColor: statusConfig.color,
+                  }}
                 />
               </View>
-              <Text style={styles.statusCount}>{count}</Text>
+              <Text className="ml-3 text-sm font-semibold text-gray-900 w-8 text-right">{count}</Text>
             </View>
           );
         })}
@@ -114,198 +120,48 @@ export default function DashboardScreen() {
 
       {/* Évolution dans le temps */}
       {stats.evolution.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Évolution</Text>
-          <View style={styles.evolutionContainer}>
-            {stats.evolution.map((item, index) => (
-              <View key={index} style={styles.evolutionItem}>
-                <Text style={styles.evolutionDate}>
-                  {new Date(item.date + '-01').toLocaleDateString('fr-FR', {
-                    month: 'short',
-                    year: 'numeric',
-                  })}
-                </Text>
-                <View
-                  style={[
-                    styles.evolutionBar,
-                    {
-                      height: Math.max(20, (item.count / stats.total) * 100),
-                    },
-                  ]}
-                />
-                <Text style={styles.evolutionCount}>{item.count}</Text>
-              </View>
-            ))}
+        <View className="mx-4 mb-4 rounded-2xl bg-white p-5 shadow-sm border border-gray-100">
+          <Text className="mb-4 text-xl font-bold text-gray-900">Évolution</Text>
+          <View className="flex-row items-end justify-around h-32 py-4">
+            {stats.evolution.map((item, index) => {
+              const maxCount = Math.max(...stats.evolution.map(e => e.count));
+              const height = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
+              
+              return (
+                <View key={index} className="flex-1 items-center">
+                  <Text className="mb-2 text-xs text-gray-600 text-center">
+                    {new Date(item.date + '-01').toLocaleDateString('fr-FR', {
+                      month: 'short',
+                      year: 'numeric',
+                    })}
+                  </Text>
+                  <View
+                    className="w-4/5 rounded-t-lg bg-primary-500 mb-1"
+                    style={{ height: Math.max(20, height) }}
+                  />
+                  <Text className="text-xs font-semibold text-gray-900">{item.count}</Text>
+                </View>
+              );
+            })}
           </View>
         </View>
       )}
 
       {/* Actions rapides */}
-      <View style={styles.actions}>
+      <View className="px-4 pb-6 gap-3">
         <TouchableOpacity
-          style={styles.actionButton}
+          className="rounded-xl border-2 border-gray-200 bg-white py-4"
           onPress={() => router.push('/(tabs)/applications' as any)}
         >
-          <Text style={styles.actionButtonText}>Voir toutes les candidatures</Text>
+          <Text className="text-center text-base font-semibold text-gray-900">Voir toutes les candidatures</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.actionButton, styles.actionButtonPrimary]}
+          className="rounded-xl bg-primary-500 py-4 shadow-lg shadow-primary-500/30"
           onPress={() => router.push('/application/new' as any)}
         >
-          <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
-            Ajouter une candidature
-          </Text>
+          <Text className="text-center text-base font-semibold text-white">Ajouter une candidature</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  header: {
-    padding: 16,
-    backgroundColor: Colors.background,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: Colors.text,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    padding: 16,
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: Colors.background,
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  statValue: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: Colors.primary,
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-  },
-  section: {
-    padding: 16,
-    backgroundColor: Colors.background,
-    marginTop: 8,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.text,
-    marginBottom: 16,
-  },
-  statusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    gap: 8,
-  },
-  statusInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: 120,
-  },
-  statusIndicator: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 8,
-  },
-  statusLabel: {
-    fontSize: 14,
-    color: Colors.text,
-  },
-  statusBarContainer: {
-    flex: 1,
-    height: 8,
-    backgroundColor: Colors.border,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  statusBar: {
-    height: '100%',
-    borderRadius: 4,
-  },
-  statusCount: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.text,
-    width: 30,
-    textAlign: 'right',
-  },
-  evolutionContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-around',
-    height: 150,
-    paddingVertical: 16,
-  },
-  evolutionItem: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-  },
-  evolutionDate: {
-    fontSize: 10,
-    color: Colors.textSecondary,
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  evolutionBar: {
-    width: '80%',
-    backgroundColor: Colors.primary,
-    borderRadius: 4,
-    marginBottom: 4,
-    minHeight: 20,
-  },
-  evolutionCount: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.text,
-  },
-  actions: {
-    padding: 16,
-    gap: 12,
-  },
-  actionButton: {
-    padding: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'center',
-  },
-  actionButtonPrimary: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  actionButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.text,
-  },
-  actionButtonTextPrimary: {
-    color: Colors.background,
-  },
-});

@@ -3,8 +3,10 @@ import { StatusBar } from 'expo-status-bar';
 import { useState, useEffect } from 'react';
 import { AuthProvider } from '@/providers/AuthProvider';
 import { initDatabase } from '@/services/database';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { Colors } from '@/constants/colors';
+import { View, ActivityIndicator, Platform } from 'react-native';
+import { useThemeStore } from '@/store/themeStore';
+import '@/config/nativewind'; // Configurer NativeWind en premier
+import '../global.css';
 
 const DatabaseInitializer = ({ children }: { children: React.ReactNode }) => {
   const [isReady, setIsReady] = useState(false);
@@ -24,8 +26,8 @@ const DatabaseInitializer = ({ children }: { children: React.ReactNode }) => {
 
   if (!isReady) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <View className="flex-1 items-center justify-center bg-white">
+        <ActivityIndicator size="large" color="#2563EB" />
       </View>
     );
   }
@@ -34,10 +36,24 @@ const DatabaseInitializer = ({ children }: { children: React.ReactNode }) => {
 };
 
 export default function RootLayout() {
+  const { isDark } = useThemeStore();
+
+  // Appliquer la classe dark sur le root element au montage et quand isDark change
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      // Appliquer manuellement la classe dark
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+  }, [isDark]);
+
   return (
     <DatabaseInitializer>
       <AuthProvider>
-        <StatusBar style="auto" />
+        <StatusBar style={isDark ? 'light' : 'dark'} />
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
@@ -50,13 +66,3 @@ export default function RootLayout() {
     </DatabaseInitializer>
   );
 }
-
-const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: Colors.background,
-  },
-});
-

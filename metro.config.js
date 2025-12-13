@@ -1,5 +1,6 @@
 // Learn more https://docs.expo.dev/guides/customizing-metro
 const { getDefaultConfig } = require('expo/metro-config');
+const { withNativeWind } = require('nativewind/metro');
 const path = require('path');
 
 /** @type {import('expo/metro-config').MetroConfig} */
@@ -20,8 +21,8 @@ config.resolver = {
     '@/store': path.resolve(__dirname, 'src/store'),
     '@/providers': path.resolve(__dirname, 'src/providers'),
   },
-  sourceExts: [...(config.resolver.sourceExts || []), 'ts', 'tsx'],
+  sourceExts: [...(config.resolver.sourceExts || []), 'ts', 'tsx', 'css'],
 };
 
-module.exports = config;
+module.exports = withNativeWind(config, { input: './global.css' });
 

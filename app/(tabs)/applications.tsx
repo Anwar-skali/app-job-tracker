@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   FlatList,
   TouchableOpacity,
   TextInput,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,7 +17,7 @@ import {
 } from '@/services/jobApplication';
 import { JobApplication, ApplicationFilters, ApplicationStatus, ContractType } from '@/types/jobApplication';
 import { StatusConfig, ContractTypeLabels } from '@/constants';
-import { Colors } from '@/constants/colors';
+import { Feather } from '@expo/vector-icons';
 
 export default function ApplicationsScreen() {
   const router = useRouter();
@@ -94,73 +94,114 @@ export default function ApplicationsScreen() {
     
     return (
       <TouchableOpacity
-        style={styles.card}
+        className="mb-3 rounded-2xl bg-white p-4 shadow-sm border border-gray-100"
         onPress={() => router.push(`/application/${item.id}` as any)}
+        activeOpacity={0.7}
       >
-        <View style={styles.cardHeader}>
-          <Text style={styles.title}>{item.title}</Text>
-          <View style={[styles.statusBadge, { backgroundColor: statusConfig.color + '20' }]}>
-            <Text style={[styles.statusText, { color: statusConfig.color }]}>
+        <View className="mb-3 flex-row items-start justify-between">
+          <View className="flex-1 mr-2">
+            <Text className="mb-1 text-lg font-bold text-gray-900">{item.title}</Text>
+            <Text className="text-base text-gray-600">{item.company}</Text>
+          </View>
+          <View
+            className="rounded-full px-3 py-1"
+            style={{ backgroundColor: statusConfig.color + '20' }}
+          >
+            <Text
+              className="text-xs font-semibold"
+              style={{ color: statusConfig.color }}
+            >
               {statusConfig.label}
             </Text>
           </View>
         </View>
-        <Text style={styles.company}>{item.company}</Text>
-        <View style={styles.cardFooter}>
-          <Text style={styles.location}>{item.location}</Text>
-          <Text style={styles.contractType}>
-            {ContractTypeLabels[item.contractType]}
-          </Text>
+        <View className="mb-2 flex-row items-center gap-4">
+          <View className="flex-row items-center">
+            <Feather name="map-pin" size={14} color="#6B7280" />
+            <Text className="ml-1 text-sm text-gray-600">{item.location}</Text>
+          </View>
+          <View className="flex-row items-center">
+            <Feather name="briefcase" size={14} color="#6B7280" />
+            <Text className="ml-1 text-sm text-gray-600">
+              {ContractTypeLabels[item.contractType]}
+            </Text>
+          </View>
         </View>
-        <Text style={styles.date}>
-          {new Date(item.applicationDate).toLocaleDateString('fr-FR')}
-        </Text>
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => handleDelete(item.id)}
-        >
-          <Text style={styles.deleteText}>Supprimer</Text>
-        </TouchableOpacity>
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center">
+            <Feather name="calendar" size={14} color="#6B7280" />
+            <Text className="ml-1 text-xs text-gray-500">
+              {new Date(item.applicationDate).toLocaleDateString('fr-FR')}
+            </Text>
+          </View>
+          <TouchableOpacity
+            className="p-2"
+            onPress={() => handleDelete(item.id)}
+          >
+            <Feather name="trash-2" size={18} color="#EF4444" />
+          </TouchableOpacity>
+        </View>
       </TouchableOpacity>
     );
   };
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <Text>Chargement...</Text>
+      <View className="flex-1 items-center justify-center bg-gray-50">
+        <ActivityIndicator size="large" color="#2563EB" />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Rechercher par titre ou entreprise..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
+    <View className="flex-1 bg-gray-50">
+      <View className="bg-white px-4 py-3 border-b border-gray-200">
+        <View className="relative">
+          <Feather name="search" size={20} color="#9CA3AF" className="absolute left-3 top-3.5 z-10" />
+          <TextInput
+            className="rounded-xl border-2 border-gray-200 bg-gray-50 pl-10 pr-4 py-3 text-base text-gray-900"
+            placeholder="Rechercher par titre ou entreprise..."
+            placeholderTextColor="#9CA3AF"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
       </View>
 
-      <View style={styles.filtersContainer}>
+      <View className="flex-row flex-wrap gap-2 px-4 py-3 bg-white border-b border-gray-200">
         <TouchableOpacity
-          style={[styles.filterButton, filterStatus && styles.filterButtonActive]}
+          className={`rounded-full px-4 py-2 border-2 ${
+            !filterStatus
+              ? 'bg-primary-500 border-primary-500'
+              : 'bg-white border-gray-200'
+          }`}
           onPress={() => setFilterStatus(undefined)}
         >
-          <Text>Tous</Text>
+          <Text
+            className={`text-sm font-medium ${
+              !filterStatus ? 'text-white' : 'text-gray-700'
+            }`}
+          >
+            Tous
+          </Text>
         </TouchableOpacity>
         {Object.values(ApplicationStatus).map(status => (
           <TouchableOpacity
             key={status}
-            style={[
-              styles.filterButton,
-              filterStatus === status && styles.filterButtonActive,
-            ]}
+            className={`rounded-full px-4 py-2 border-2 ${
+              filterStatus === status
+                ? 'bg-primary-500 border-primary-500'
+                : 'bg-white border-gray-200'
+            }`}
             onPress={() => setFilterStatus(filterStatus === status ? undefined : status)}
           >
-            <Text>{StatusConfig[status].label}</Text>
+            <Text
+              className={`text-sm font-medium ${
+                filterStatus === status ? 'text-white' : 'text-gray-700'
+              }`}
+            >
+              {StatusConfig[status].label}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -169,155 +210,22 @@ export default function ApplicationsScreen() {
         data={filteredApplications}
         renderItem={renderApplication}
         keyExtractor={item => item.id}
-        contentContainerStyle={styles.list}
+        contentContainerClassName="p-4"
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>Aucune candidature trouvée</Text>
+          <View className="py-12 items-center">
+            <Feather name="inbox" size={48} color="#9CA3AF" />
+            <Text className="mt-4 text-base text-gray-500">Aucune candidature trouvée</Text>
           </View>
         }
       />
 
       <TouchableOpacity
-        style={styles.fab}
+        className="absolute right-4 bottom-4 h-14 w-14 items-center justify-center rounded-full bg-primary-500 shadow-lg shadow-primary-500/30"
         onPress={() => router.push('/application/new' as any)}
+        activeOpacity={0.8}
       >
-        <Text style={styles.fabText}>+</Text>
+        <Feather name="plus" size={24} color="#fff" />
       </TouchableOpacity>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  searchContainer: {
-    padding: 16,
-    backgroundColor: Colors.background,
-  },
-  searchInput: {
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-  },
-  filtersContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  filterButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: '#f0f0f0',
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  filterButtonActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  list: {
-    padding: 16,
-  },
-  card: {
-    backgroundColor: Colors.background,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: Colors.text,
-    flex: 1,
-    marginRight: 8,
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  company: {
-    fontSize: 16,
-    color: Colors.textSecondary,
-    marginBottom: 8,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  location: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-  },
-  contractType: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-  },
-  date: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    marginBottom: 8,
-  },
-  deleteButton: {
-    alignSelf: 'flex-end',
-    paddingVertical: 4,
-  },
-  deleteText: {
-    color: Colors.error,
-    fontSize: 14,
-  },
-  emptyContainer: {
-    padding: 32,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 16,
-    color: Colors.textSecondary,
-  },
-  fab: {
-    position: 'absolute',
-    right: 16,
-    bottom: 16,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  fabText: {
-    color: Colors.background,
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-});
-
