@@ -32,4 +32,3 @@ export interface Application {
   submittedDate?: string;
   status?: 'pending' | 'reviewing' | 'accepted' | 'rejected';
 }
-
