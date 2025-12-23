@@ -83,70 +83,68 @@ export default function EditApplicationScreen() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-gray-50">
-      <View className="p-4">
-        <View className="mb-5">
-          <Text className="mb-2 text-sm font-semibold text-gray-700">Titre du poste *</Text>
+    <ScrollView className="flex-1 bg-background-light dark:bg-background-dark">
+      <View className="p-5 pb-10">
+        <View className="mb-6">
+          <Text className="mb-2 text-sm font-bold text-secondary-700 dark:text-secondary-300 uppercase tracking-wide">Titre du poste *</Text>
           <TextInput
-            className="rounded-xl border-2 border-gray-200 bg-white px-4 py-4 text-base text-gray-900"
+            className="rounded-2xl border-2 border-secondary-100 dark:border-secondary-700 bg-white dark:bg-surface-dark px-5 py-4 text-base text-gray-900 dark:text-white focus:border-primary-500"
             placeholder="Ex: Développeur React Native"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor="#94A3B8"
             value={formData.title}
             onChangeText={text => setFormData({ ...formData, title: text })}
           />
         </View>
 
-        <View className="mb-5">
-          <Text className="mb-2 text-sm font-semibold text-gray-700">Entreprise *</Text>
+        <View className="mb-6">
+          <Text className="mb-2 text-sm font-bold text-secondary-700 dark:text-secondary-300 uppercase tracking-wide">Entreprise *</Text>
           <TextInput
-            className="rounded-xl border-2 border-gray-200 bg-white px-4 py-4 text-base text-gray-900"
+            className="rounded-2xl border-2 border-secondary-100 dark:border-secondary-700 bg-white dark:bg-surface-dark px-5 py-4 text-base text-gray-900 dark:text-white focus:border-primary-500"
             placeholder="Ex: Tech Corp"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor="#94A3B8"
             value={formData.company}
             onChangeText={text => setFormData({ ...formData, company: text })}
           />
         </View>
 
-        <View className="mb-5">
-          <Text className="mb-2 text-sm font-semibold text-gray-700">Lieu *</Text>
+        <View className="mb-6">
+          <Text className="mb-2 text-sm font-bold text-secondary-700 dark:text-secondary-300 uppercase tracking-wide">Lieu *</Text>
           <TextInput
-            className="rounded-xl border-2 border-gray-200 bg-white px-4 py-4 text-base text-gray-900"
+            className="rounded-2xl border-2 border-secondary-100 dark:border-secondary-700 bg-white dark:bg-surface-dark px-5 py-4 text-base text-gray-900 dark:text-white focus:border-primary-500"
             placeholder="Ex: Paris, Remote"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor="#94A3B8"
             value={formData.location}
             onChangeText={text => setFormData({ ...formData, location: text })}
           />
         </View>
 
-        <View className="mb-5">
-          <Text className="mb-2 text-sm font-semibold text-gray-700">Lien de l'annonce</Text>
+        <View className="mb-6">
+          <Text className="mb-2 text-sm font-bold text-secondary-700 dark:text-secondary-300 uppercase tracking-wide">Lien de l'annonce</Text>
           <TextInput
-            className="rounded-xl border-2 border-gray-200 bg-white px-4 py-4 text-base text-gray-900"
+            className="rounded-2xl border-2 border-secondary-100 dark:border-secondary-700 bg-white dark:bg-surface-dark px-5 py-4 text-base text-gray-900 dark:text-white focus:border-primary-500"
             placeholder="https://..."
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor="#94A3B8"
             keyboardType="url"
             value={formData.jobUrl}
             onChangeText={text => setFormData({ ...formData, jobUrl: text })}
           />
         </View>
 
-        <View className="mb-5">
-          <Text className="mb-2 text-sm font-semibold text-gray-700">Type de contrat</Text>
-          <View className="flex-row flex-wrap gap-2">
+        <View className="mb-6">
+          <Text className="mb-2 text-sm font-bold text-secondary-700 dark:text-secondary-300 uppercase tracking-wide">Type de contrat</Text>
+          <View className="flex-row flex-wrap gap-3">
             {Object.values(ContractType).map(type => (
               <TouchableOpacity
                 key={type}
-                className={`rounded-full px-4 py-2 border-2 ${
-                  formData.contractType === type
-                    ? 'bg-primary-500 border-primary-500'
-                    : 'bg-white border-gray-200'
-                }`}
+                className={`rounded-full px-5 py-2.5 border ${formData.contractType === type
+                    ? 'bg-primary-600 border-primary-600'
+                    : 'bg-white dark:bg-surface-dark border-secondary-200 dark:border-secondary-700'
+                  }`}
                 onPress={() => setFormData({ ...formData, contractType: type })}
               >
                 <Text
-                  className={`text-sm font-medium ${
-                    formData.contractType === type ? 'text-white' : 'text-gray-700'
-                  }`}
+                  className={`text-sm font-bold ${formData.contractType === type ? 'text-white' : 'text-secondary-600 dark:text-secondary-300'
+                    }`}
                 >
                   {type}
                 </Text>
@@ -155,34 +153,32 @@ export default function EditApplicationScreen() {
           </View>
         </View>
 
-        <View className="mb-5">
-          <Text className="mb-2 text-sm font-semibold text-gray-700">Date de candidature</Text>
+        <View className="mb-6">
+          <Text className="mb-2 text-sm font-bold text-secondary-700 dark:text-secondary-300 uppercase tracking-wide">Date de candidature</Text>
           <TextInput
-            className="rounded-xl border-2 border-gray-200 bg-white px-4 py-4 text-base text-gray-900"
+            className="rounded-2xl border-2 border-secondary-100 dark:border-secondary-700 bg-white dark:bg-surface-dark px-5 py-4 text-base text-gray-900 dark:text-white focus:border-primary-500"
             placeholder="YYYY-MM-DD"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor="#94A3B8"
             value={formData.applicationDate}
             onChangeText={text => setFormData({ ...formData, applicationDate: text })}
           />
         </View>
 
-        <View className="mb-5">
-          <Text className="mb-2 text-sm font-semibold text-gray-700">Statut</Text>
+        <View className="mb-6">
+          <Text className="mb-2 text-sm font-bold text-secondary-700 dark:text-secondary-300 uppercase tracking-wide">Statut</Text>
           <View className="flex-row flex-wrap gap-2">
             {Object.values(ApplicationStatus).map(status => (
               <TouchableOpacity
                 key={status}
-                className={`rounded-full px-4 py-2 border-2 ${
-                  formData.status === status
-                    ? 'bg-primary-500 border-primary-500'
-                    : 'bg-white border-gray-200'
-                }`}
+                className={`rounded-full px-4 py-2 border ${formData.status === status
+                    ? 'bg-primary-600 border-primary-600'
+                    : 'bg-white dark:bg-surface-dark border-secondary-200 dark:border-secondary-700'
+                  }`}
                 onPress={() => setFormData({ ...formData, status })}
               >
                 <Text
-                  className={`text-sm font-medium ${
-                    formData.status === status ? 'text-white' : 'text-gray-700'
-                  }`}
+                  className={`text-xs font-bold ${formData.status === status ? 'text-white' : 'text-secondary-600 dark:text-secondary-300'
+                    }`}
                 >
                   {status}
                 </Text>
@@ -191,12 +187,12 @@ export default function EditApplicationScreen() {
           </View>
         </View>
 
-        <View className="mb-6">
-          <Text className="mb-2 text-sm font-semibold text-gray-700">Notes</Text>
+        <View className="mb-8">
+          <Text className="mb-2 text-sm font-bold text-secondary-700 dark:text-secondary-300 uppercase tracking-wide">Notes</Text>
           <TextInput
-            className="rounded-xl border-2 border-gray-200 bg-white px-4 py-4 text-base text-gray-900 min-h-[100px]"
+            className="rounded-2xl border-2 border-secondary-100 dark:border-secondary-700 bg-white dark:bg-surface-dark px-5 py-4 text-base text-gray-900 dark:text-white focus:border-primary-500 min-h-[120px]"
             placeholder="Notes supplémentaires..."
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor="#94A3B8"
             multiline
             numberOfLines={4}
             textAlignVertical="top"
@@ -206,14 +202,14 @@ export default function EditApplicationScreen() {
         </View>
 
         <TouchableOpacity
-          className={`rounded-xl bg-primary-500 py-4 shadow-lg shadow-primary-500/30 ${saving ? 'opacity-60' : ''}`}
+          className={`rounded-2xl bg-primary-600 py-4 shadow-lg shadow-primary-500/30 active:bg-primary-700 ${saving ? 'opacity-70' : ''}`}
           onPress={handleSubmit}
           disabled={saving}
         >
           {saving ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text className="text-center text-base font-semibold text-white">
+            <Text className="text-center text-lg font-bold text-white">
               Enregistrer les modifications
             </Text>
           )}

@@ -39,11 +39,11 @@ export default function ApplicationsScreen() {
 
   const loadApplications = async () => {
     if (!user) return;
-    
+
     try {
       setLoading(true);
       const data = await getApplications(user.id);
-      setApplications(data.sort((a, b) => 
+      setApplications(data.sort((a, b) =>
         new Date(b.applicationDate).getTime() - new Date(a.applicationDate).getTime()
       ));
     } catch (error) {
@@ -91,7 +91,7 @@ export default function ApplicationsScreen() {
 
   const renderApplication = ({ item }: { item: JobApplication }) => {
     const statusConfig = StatusConfig[item.status];
-    
+
     return (
       <TouchableOpacity
         className="mb-3 rounded-2xl bg-white p-4 shadow-sm border border-gray-100"
@@ -154,33 +154,31 @@ export default function ApplicationsScreen() {
   }
 
   return (
-    <View className="flex-1 bg-gray-50">
-      <View className="bg-white px-4 py-3 border-b border-gray-200">
+    <View className="flex-1 bg-background-light dark:bg-background-dark">
+      <View className="bg-white dark:bg-surface-dark px-5 py-4 border-b border-secondary-100 dark:border-secondary-800">
         <View className="relative">
-          <Feather name="search" size={20} color="#9CA3AF" className="absolute left-3 top-3.5 z-10" />
+          <Feather name="search" size={20} color="#94A3B8" className="absolute left-4 top-4 z-10" />
           <TextInput
-            className="rounded-xl border-2 border-gray-200 bg-gray-50 pl-10 pr-4 py-3 text-base text-gray-900"
-            placeholder="Rechercher par titre ou entreprise..."
-            placeholderTextColor="#9CA3AF"
+            className="rounded-2xl border-2 border-secondary-100 dark:border-secondary-700 bg-secondary-50 dark:bg-secondary-800/50 pl-12 pr-4 py-3.5 text-base text-gray-900 dark:text-white focus:border-primary-500"
+            placeholder="Rechercher..."
+            placeholderTextColor="#94A3B8"
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
         </View>
       </View>
 
-      <View className="flex-row flex-wrap gap-2 px-4 py-3 bg-white border-b border-gray-200">
+      <View className="flex-row flex-wrap gap-2 px-5 py-3 bg-white dark:bg-surface-dark border-b border-secondary-100 dark:border-secondary-800">
         <TouchableOpacity
-          className={`rounded-full px-4 py-2 border-2 ${
-            !filterStatus
-              ? 'bg-primary-500 border-primary-500'
-              : 'bg-white border-gray-200'
-          }`}
+          className={`rounded-full px-4 py-2 border ${!filterStatus
+              ? 'bg-primary-600 border-primary-600'
+              : 'bg-white dark:bg-transparent border-secondary-200 dark:border-secondary-700'
+            }`}
           onPress={() => setFilterStatus(undefined)}
         >
           <Text
-            className={`text-sm font-medium ${
-              !filterStatus ? 'text-white' : 'text-gray-700'
-            }`}
+            className={`text-sm font-semibold ${!filterStatus ? 'text-white' : 'text-secondary-600 dark:text-secondary-300'
+              }`}
           >
             Tous
           </Text>
@@ -188,17 +186,15 @@ export default function ApplicationsScreen() {
         {Object.values(ApplicationStatus).map(status => (
           <TouchableOpacity
             key={status}
-            className={`rounded-full px-4 py-2 border-2 ${
-              filterStatus === status
-                ? 'bg-primary-500 border-primary-500'
-                : 'bg-white border-gray-200'
-            }`}
+            className={`rounded-full px-4 py-2 border ${filterStatus === status
+                ? 'bg-primary-600 border-primary-600'
+                : 'bg-white dark:bg-transparent border-secondary-200 dark:border-secondary-700'
+              }`}
             onPress={() => setFilterStatus(filterStatus === status ? undefined : status)}
           >
             <Text
-              className={`text-sm font-medium ${
-                filterStatus === status ? 'text-white' : 'text-gray-700'
-              }`}
+              className={`text-sm font-semibold ${filterStatus === status ? 'text-white' : 'text-secondary-600 dark:text-secondary-300'
+                }`}
             >
               {StatusConfig[status].label}
             </Text>
@@ -210,21 +206,27 @@ export default function ApplicationsScreen() {
         data={filteredApplications}
         renderItem={renderApplication}
         keyExtractor={item => item.id}
-        contentContainerClassName="p-4"
+        contentContainerClassName="p-5 pb-24"
+        showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          <View className="py-12 items-center">
-            <Feather name="inbox" size={48} color="#9CA3AF" />
-            <Text className="mt-4 text-base text-gray-500">Aucune candidature trouvée</Text>
+          <View className="py-20 items-center px-6">
+            <View className="mb-4 h-24 w-24 items-center justify-center rounded-full bg-secondary-100 dark:bg-secondary-800">
+              <Feather name="inbox" size={40} color="#94A3B8" />
+            </View>
+            <Text className="text-xl font-bold text-secondary-900 dark:text-white text-center">Aucune candidature</Text>
+            <Text className="mt-2 text-center text-secondary-500 text-base">
+              Commencez par ajouter votre première candidature
+            </Text>
           </View>
         }
       />
 
       <TouchableOpacity
-        className="absolute right-4 bottom-4 h-14 w-14 items-center justify-center rounded-full bg-primary-500 shadow-lg shadow-primary-500/30"
+        className="absolute right-5 bottom-5 h-16 w-16 items-center justify-center rounded-2xl bg-primary-600 shadow-lg shadow-primary-600/40 active:bg-primary-700"
         onPress={() => router.push('/application/new' as any)}
         activeOpacity={0.8}
       >
-        <Feather name="plus" size={24} color="#fff" />
+        <Feather name="plus" size={32} color="#fff" />
       </TouchableOpacity>
     </View>
   );

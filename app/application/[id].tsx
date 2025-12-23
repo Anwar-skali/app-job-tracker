@@ -70,8 +70,8 @@ export default function ApplicationDetailScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-gray-50">
-        <ActivityIndicator size="large" color="#2563EB" />
+      <View className="flex-1 items-center justify-center bg-gray-50 dark:bg-background-dark">
+        <ActivityIndicator size="large" color="#4F46E5" />
       </View>
     );
   }
@@ -83,19 +83,19 @@ export default function ApplicationDetailScreen() {
   const statusConfig = StatusConfig[application.status];
 
   return (
-    <ScrollView className="flex-1 bg-gray-50">
-      <View className="bg-white px-4 py-6 border-b border-gray-200">
-        <View className="mb-3 flex-row items-start justify-between">
-          <View className="flex-1 mr-3">
-            <Text className="mb-2 text-2xl font-bold text-gray-900">{application.title}</Text>
-            <Text className="text-lg text-gray-600">{application.company}</Text>
+    <ScrollView className="flex-1 bg-background-light dark:bg-background-dark">
+      <View className="bg-white dark:bg-surface-dark px-5 py-6 border-b border-secondary-100 dark:border-secondary-800">
+        <View className="mb-4 flex-row items-start justify-between">
+          <View className="flex-1 mr-4">
+            <Text className="mb-2 text-2xl font-bold text-gray-900 dark:text-white leading-tight">{application.title}</Text>
+            <Text className="text-lg font-medium text-secondary-500">{application.company}</Text>
           </View>
           <View
             className="rounded-full px-4 py-2"
             style={{ backgroundColor: statusConfig.color + '20' }}
           >
             <Text
-              className="text-sm font-semibold"
+              className="text-sm font-bold"
               style={{ color: statusConfig.color }}
             >
               {statusConfig.label}
@@ -104,28 +104,28 @@ export default function ApplicationDetailScreen() {
         </View>
       </View>
 
-      <View className="bg-white px-4 py-5 mb-2 border-b border-gray-200">
-        <Text className="mb-4 text-lg font-bold text-gray-900">Informations</Text>
-        <View className="mb-3 flex-row">
-          <Text className="w-32 text-base text-gray-600">Lieu :</Text>
-          <Text className="flex-1 text-base text-gray-900">{application.location}</Text>
+      <View className="bg-white dark:bg-surface-dark px-5 py-6 mb-3 border-b border-secondary-100 dark:border-secondary-800">
+        <Text className="mb-5 text-xl font-bold text-gray-900 dark:text-white">Informations</Text>
+        <View className="mb-4 flex-row border-b border-secondary-50 dark:border-secondary-800/50 pb-4 last:border-0 last:pb-0">
+          <Text className="w-36 text-base font-medium text-secondary-500">Lieu :</Text>
+          <Text className="flex-1 text-base font-semibold text-gray-900 dark:text-white">{application.location}</Text>
         </View>
-        <View className="mb-3 flex-row">
-          <Text className="w-32 text-base text-gray-600">Type de contrat :</Text>
-          <Text className="flex-1 text-base text-gray-900">
+        <View className="mb-4 flex-row border-b border-secondary-50 dark:border-secondary-800/50 pb-4 last:border-0 last:pb-0">
+          <Text className="w-36 text-base font-medium text-secondary-500">Type de contrat :</Text>
+          <Text className="flex-1 text-base font-semibold text-gray-900 dark:text-white">
             {ContractTypeLabels[application.contractType]}
           </Text>
         </View>
-        <View className="mb-3 flex-row">
-          <Text className="w-32 text-base text-gray-600">Date de candidature :</Text>
-          <Text className="flex-1 text-base text-gray-900">
+        <View className="mb-4 flex-row border-b border-secondary-50 dark:border-secondary-800/50 pb-4 last:border-0 last:pb-0">
+          <Text className="w-36 text-base font-medium text-secondary-500">Date :</Text>
+          <Text className="flex-1 text-base font-semibold text-gray-900 dark:text-white">
             {new Date(application.applicationDate).toLocaleDateString('fr-FR')}
           </Text>
         </View>
         {application.jobUrl && (
-          <View className="mb-3 flex-row">
-            <Text className="w-32 text-base text-gray-600">Lien de l'annonce :</Text>
-            <Text className="flex-1 text-base text-primary-500" numberOfLines={1}>
+          <View className="mb-4 flex-row">
+            <Text className="w-36 text-base font-medium text-secondary-500">Annonce :</Text>
+            <Text className="flex-1 text-base font-semibold text-primary-600 dark:text-primary-400" numberOfLines={1}>
               {application.jobUrl}
             </Text>
           </View>
@@ -133,36 +133,36 @@ export default function ApplicationDetailScreen() {
       </View>
 
       {application.notes && (
-        <View className="bg-white px-4 py-5 mb-2 border-b border-gray-200">
-          <Text className="mb-3 text-lg font-bold text-gray-900">Notes</Text>
-          <Text className="text-base leading-6 text-gray-900">{application.notes}</Text>
+        <View className="bg-white dark:bg-surface-dark px-5 py-6 mb-3 border-b border-secondary-100 dark:border-secondary-800">
+          <Text className="mb-4 text-xl font-bold text-gray-900 dark:text-white">Notes</Text>
+          <Text className="text-base leading-7 text-secondary-700 dark:text-secondary-300">{application.notes}</Text>
         </View>
       )}
 
       {application.documents && application.documents.length > 0 && (
-        <View className="bg-white px-4 py-5 mb-2 border-b border-gray-200">
-          <Text className="mb-3 text-lg font-bold text-gray-900">Documents joints</Text>
+        <View className="bg-white dark:bg-surface-dark px-5 py-6 mb-3 border-b border-secondary-100 dark:border-secondary-800">
+          <Text className="mb-4 text-xl font-bold text-gray-900 dark:text-white">Documents joints</Text>
           {application.documents.map((doc, index) => (
-            <View key={index} className="mb-2 flex-row items-center">
-              <Feather name="file" size={18} color="#2563EB" />
-              <Text className="ml-2 text-base text-primary-500">{doc}</Text>
+            <View key={index} className="mb-3 flex-row items-center bg-secondary-50 dark:bg-secondary-800/50 p-3 rounded-xl border border-secondary-100 dark:border-secondary-700">
+              <Feather name="file-text" size={20} color="#4F46E5" />
+              <Text className="ml-3 text-base font-medium text-secondary-700 dark:text-secondary-300">{doc}</Text>
             </View>
           ))}
         </View>
       )}
 
-      <View className="flex-row gap-3 px-4 py-6">
+      <View className="flex-row gap-4 px-5 py-8 pb-12">
         <TouchableOpacity
-          className="flex-1 rounded-xl bg-primary-500 py-4 shadow-lg shadow-primary-500/30"
+          className="flex-1 rounded-2xl bg-primary-600 py-4 shadow-lg shadow-primary-600/30 active:bg-primary-700"
           onPress={() => router.push(`/application/${application.id}/edit` as any)}
         >
-          <Text className="text-center text-base font-semibold text-white">Modifier</Text>
+          <Text className="text-center text-lg font-bold text-white">Modifier</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          className="flex-1 rounded-xl bg-red-500 py-4 shadow-lg"
+          className="flex-1 rounded-2xl bg-red-500 py-4 shadow-lg shadow-red-500/30 active:bg-red-600"
           onPress={handleDelete}
         >
-          <Text className="text-center text-base font-semibold text-white">Supprimer</Text>
+          <Text className="text-center text-lg font-bold text-white">Supprimer</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

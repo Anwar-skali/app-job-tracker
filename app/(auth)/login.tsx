@@ -25,27 +25,27 @@ export default function LoginScreen() {
 
   const onSubmit = async () => {
     setError(null);
-    
+
     if (!email.trim()) {
       setError('Veuillez entrer votre email');
       return;
     }
-    
+
     if (!validateEmail(email)) {
       setError('Email invalide');
       return;
     }
-    
+
     if (!password) {
       setError('Veuillez entrer votre mot de passe');
       return;
     }
-    
+
     if (password.length < 6) {
       setError('Le mot de passe doit contenir au moins 6 caractères');
       return;
     }
-    
+
     try {
       setLoading(true);
       await login({ email, password });
@@ -59,7 +59,7 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-white"
+      className="flex-1 bg-background-light dark:bg-background-dark"
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
@@ -67,26 +67,26 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View className="mb-10 items-center">
-          <View className="mb-4 h-16 w-16 items-center justify-center rounded-2xl bg-primary-100">
-            <Feather name="briefcase" size={32} color="#2563EB" />
+          <View className="mb-6 h-20 w-20 items-center justify-center rounded-3xl bg-primary-50 shadow-sm shadow-primary-100">
+            <Feather name="briefcase" size={36} color="#4F46E5" />
           </View>
-          <Text className="mb-2 text-3xl font-bold text-gray-900">Connexion</Text>
-          <Text className="text-center text-base text-gray-600">
+          <Text className="mb-3 text-4xl font-bold text-gray-900 dark:text-white">Connexion</Text>
+          <Text className="text-center text-lg text-secondary-500">
             Connectez-vous pour gérer vos candidatures
           </Text>
         </View>
 
         <View className="w-full">
-          <View className="mb-5">
-            <Text className="mb-2 text-sm font-semibold text-gray-700">Email</Text>
-            <View className={`rounded-xl border-2 bg-gray-50 ${error && !email ? 'border-red-500' : 'border-gray-200'}`}>
+          <View className="mb-6">
+            <Text className="mb-2 text-sm font-semibold text-secondary-700 dark:text-secondary-300">Email</Text>
+            <View className={`rounded-2xl border-2 bg-surface-light dark:bg-surface-dark ${error && !email ? 'border-red-500' : 'border-secondary-100 focus:border-primary-500'}`}>
               <TextInput
                 placeholder="exemple@email.com"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#94A3B8"
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="email-address"
-                className="px-4 py-4 text-base text-gray-900"
+                className="px-5 py-4 text-base text-gray-900 dark:text-white"
                 value={email}
                 onChangeText={(text) => {
                   setEmail(text);
@@ -97,14 +97,14 @@ export default function LoginScreen() {
             </View>
           </View>
 
-          <View className="mb-5">
-            <Text className="mb-2 text-sm font-semibold text-gray-700">Mot de passe</Text>
-            <View className={`relative rounded-xl border-2 bg-gray-50 ${error && !password ? 'border-red-500' : 'border-gray-200'}`}>
+          <View className="mb-8">
+            <Text className="mb-2 text-sm font-semibold text-secondary-700 dark:text-secondary-300">Mot de passe</Text>
+            <View className={`relative rounded-2xl border-2 bg-surface-light dark:bg-surface-dark ${error && !password ? 'border-red-500' : 'border-secondary-100 focus:border-primary-500'}`}>
               <TextInput
                 placeholder="••••••••"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#94A3B8"
                 secureTextEntry={!showPassword}
-                className="px-4 py-4 pr-12 text-base text-gray-900"
+                className="px-5 py-4 pr-12 text-base text-gray-900 dark:text-white"
                 value={password}
                 onChangeText={(text) => {
                   setPassword(text);
@@ -113,22 +113,22 @@ export default function LoginScreen() {
                 editable={!loading}
               />
               <Pressable
-                className="absolute right-3 top-4 p-1"
+                className="absolute right-4 top-4 p-1"
                 onPress={() => setShowPassword(!showPassword)}
               >
-                <Feather name={showPassword ? 'eye' : 'eye-off'} size={20} color="#6B7280" />
+                <Feather name={showPassword ? 'eye' : 'eye-off'} size={20} color="#64748B" />
               </Pressable>
             </View>
           </View>
 
           {error ? (
-            <View className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4">
-              <Text className="text-center text-sm text-red-600">{error}</Text>
+            <View className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4">
+              <Text className="text-center text-sm font-medium text-red-600">{error}</Text>
             </View>
           ) : null}
 
           <Pressable
-            className={`mb-6 rounded-xl bg-primary-500 py-4 shadow-lg shadow-primary-500/30 ${loading ? 'opacity-60' : ''}`}
+            className={`mb-8 rounded-2xl bg-primary-600 py-5 shadow-lg shadow-primary-500/40 active:bg-primary-700 ${loading ? 'opacity-70' : ''}`}
             onPress={onSubmit}
             disabled={loading}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -136,15 +136,15 @@ export default function LoginScreen() {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text className="text-center text-base font-semibold text-white">Se connecter</Text>
+              <Text className="text-center text-lg font-bold text-white">Se connecter</Text>
             )}
           </Pressable>
 
           <View className="flex-row justify-center items-center">
-            <Text className="text-sm text-gray-600">Pas encore de compte ? </Text>
+            <Text className="text-base text-secondary-600">Pas encore de compte ? </Text>
             <Link href="/(auth)/signup" asChild>
               <Pressable>
-                <Text className="text-sm font-semibold text-primary-500">S'inscrire</Text>
+                <Text className="text-base font-bold text-primary-600">S'inscrire</Text>
               </Pressable>
             </Link>
           </View>
