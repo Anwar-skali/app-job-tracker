@@ -25,6 +25,16 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="jobs"
+        options={{
+          title: 'Offres d\'emploi',
+          tabBarLabel: 'Offres',
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="search" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="applications"
         options={{
           title: 'Candidatures',
