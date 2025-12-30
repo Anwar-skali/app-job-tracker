@@ -79,11 +79,9 @@ export default function JobsScreen() {
   };
 
   const handleJobPress = (job: Job) => {
-    // Ouvrir le lien de l'offre dans le navigateur
-    Linking.openURL(job.jobUrl).catch(err => {
-      Alert.alert('Erreur', 'Impossible d\'ouvrir le lien');
-      console.error('Error opening URL:', err);
-    });
+    // Naviguer vers l'écran de détails du job
+    // @ts-ignore
+    router.push(`/job/${job.id}`);
   };
 
   const toggleFilter = (key: keyof JobFilters, value: any) => {

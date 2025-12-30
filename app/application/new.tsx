@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,8 +7,9 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { createApplication } from '@/services/jobApplication';
 import { ApplicationStatus, ContractType } from '@/types/jobApplication';
@@ -16,18 +17,32 @@ import { Feather } from '@expo/vector-icons';
 
 export default function NewApplicationScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    title: '',
-    company: '',
-    location: '',
-    jobUrl: '',
+    title: (params.title as string) || '',
+    company: (params.company as string) || '',
+    location: (params.location as string) || '',
+    jobUrl: (params.jobUrl as string) || '',
     contractType: ContractType.CDI,
     applicationDate: new Date().toISOString().split('T')[0],
     status: ApplicationStatus.TO_APPLY,
     notes: '',
   });
+
+  useEffect(() => {
+    // Mettre à jour le formulaire si les paramètres changent (peu probable sur ce screen mais bonne pratique)
+    if (params.title || params.company) {
+      setFormData(prev => ({
+        ...prev,
+        title: (params.title as string) || prev.title,
+        company: (params.company as string) || prev.company,
+        location: (params.location as string) || prev.location,
+        jobUrl: (params.jobUrl as string) || prev.jobUrl,
+      }));
+    }
+  }, [params]);
 
   const handleSubmit = async () => {
     if (!user) {
@@ -46,11 +61,16 @@ export default function NewApplicationScreen() {
         ...formData,
         userId: user.id,
       });
-      Alert.alert('Succès', 'Candidature ajoutée avec succès', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+
+      // Navigation fluide sans alerte bloquante sur Web
+      // On passe un paramètre pour afficher un toast sur l'écran suivant si besoin
+      router.replace({
+        pathname: '/(tabs)/applications',
+        params: { success: 'true' }
+      });
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible d\'ajouter la candidature');
+      console.error('Error creating application:', error);
+      Alert.alert('Erreur', 'Impossible d\'ajouter la candidature: ' + (error as any).message);
     } finally {
       setLoading(false);
     }
@@ -110,17 +130,15 @@ export default function NewApplicationScreen() {
             {Object.values(ContractType).map(type => (
               <TouchableOpacity
                 key={type}
-                className={`rounded-full px-4 py-2 border-2 ${
-                  formData.contractType === type
-                    ? 'bg-primary-500 border-primary-500'
-                    : 'bg-white border-gray-200'
-                }`}
+                className={`rounded-full px-4 py-2 border-2 ${formData.contractType === type
+                  ? 'bg-primary-500 border-primary-500'
+                  : 'bg-white border-gray-200'
+                  }`}
                 onPress={() => setFormData({ ...formData, contractType: type })}
               >
                 <Text
-                  className={`text-sm font-medium ${
-                    formData.contractType === type ? 'text-white' : 'text-gray-700'
-                  }`}
+                  className={`text-sm font-medium ${formData.contractType === type ? 'text-white' : 'text-gray-700'
+                    }`}
                 >
                   {type}
                 </Text>
@@ -146,17 +164,15 @@ export default function NewApplicationScreen() {
             {Object.values(ApplicationStatus).map(status => (
               <TouchableOpacity
                 key={status}
-                className={`rounded-full px-4 py-2 border-2 ${
-                  formData.status === status
-                    ? 'bg-primary-500 border-primary-500'
-                    : 'bg-white border-gray-200'
-                }`}
+                className={`rounded-full px-4 py-2 border-2 ${formData.status === status
+                  ? 'bg-primary-500 border-primary-500'
+                  : 'bg-white border-gray-200'
+                  }`}
                 onPress={() => setFormData({ ...formData, status })}
               >
                 <Text
-                  className={`text-sm font-medium ${
-                    formData.status === status ? 'text-white' : 'text-gray-700'
-                  }`}
+                  className={`text-sm font-medium ${formData.status === status ? 'text-white' : 'text-gray-700'
+                    }`}
                 >
                   {status}
                 </Text>

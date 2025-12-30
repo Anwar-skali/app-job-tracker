@@ -3,12 +3,13 @@ import {
   View,
   Text,
   FlatList,
-  TouchableOpacity,
   TextInput,
+  TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import {
   getApplications,
@@ -21,6 +22,7 @@ import { Feather } from '@expo/vector-icons';
 
 export default function ApplicationsScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const { user } = useAuth();
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [filteredApplications, setFilteredApplications] = useState<JobApplication[]>([]);
@@ -28,6 +30,19 @@ export default function ApplicationsScreen() {
   const [filterStatus, setFilterStatus] = useState<ApplicationStatus | undefined>();
   const [filterContractType, setFilterContractType] = useState<ContractType | undefined>();
   const [loading, setLoading] = useState(true);
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  useEffect(() => {
+    if (params.success === 'true') {
+      setShowSuccess(true);
+      // Cacher le message après 3 secondes
+      const timer = setTimeout(() => {
+        setShowSuccess(false);
+        router.setParams({ success: undefined });
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [params.success]);
 
   useEffect(() => {
     loadApplications();
@@ -39,11 +54,11 @@ export default function ApplicationsScreen() {
 
   const loadApplications = async () => {
     if (!user) return;
-    
+
     try {
       setLoading(true);
       const data = await getApplications(user.id);
-      setApplications(data.sort((a, b) => 
+      setApplications(data.sort((a, b) =>
         new Date(b.applicationDate).getTime() - new Date(a.applicationDate).getTime()
       ));
     } catch (error) {
@@ -66,32 +81,28 @@ export default function ApplicationsScreen() {
     setFilteredApplications(filtered);
   };
 
-  const handleDelete = (id: string) => {
-    Alert.alert(
-      'Supprimer',
-      'Êtes-vous sûr de vouloir supprimer cette candidature ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: async () => {
-            if (!user) return;
-            try {
-              await deleteApplication(id, user.id);
-              loadApplications();
-            } catch (error) {
-              Alert.alert('Erreur', 'Impossible de supprimer la candidature');
-            }
-          },
-        },
-      ]
-    );
+  const handleDelete = async (id: string) => {
+    if (!user) return;
+
+    // Suppression immédiate sans confirmation "fluide"
+    try {
+      await deleteApplication(id, user.id);
+      loadApplications();
+      // Sur web, on pourrait ajouter un petit toast non bloquant ici si on avait une lib de toast
+    } catch (error) {
+      console.error('Erreur suppression:', error);
+      // En cas d'erreur seulement on affiche une alerte
+      if (Platform.OS === 'web') {
+        window.alert('Impossible de supprimer la candidature');
+      } else {
+        Alert.alert('Erreur', 'Impossible de supprimer la candidature');
+      }
+    }
   };
 
   const renderApplication = ({ item }: { item: JobApplication }) => {
     const statusConfig = StatusConfig[item.status];
-    
+
     return (
       <TouchableOpacity
         className="mb-3 rounded-2xl bg-white p-4 shadow-sm border border-gray-100"
@@ -155,6 +166,12 @@ export default function ApplicationsScreen() {
 
   return (
     <View className="flex-1 bg-gray-50">
+      {showSuccess && (
+        <View className="bg-green-500 px-4 py-3 flex-row items-center justify-center animate-bounce">
+          <Feather name="check-circle" size={20} color="#fff" />
+          <Text className="ml-2 text-white font-bold">Candidature ajoutée avec succès !</Text>
+        </View>
+      )}
       <View className="bg-white px-4 py-3 border-b border-gray-200">
         <View className="relative">
           <Feather name="search" size={20} color="#9CA3AF" className="absolute left-3 top-3.5 z-10" />
@@ -170,17 +187,15 @@ export default function ApplicationsScreen() {
 
       <View className="flex-row flex-wrap gap-2 px-4 py-3 bg-white border-b border-gray-200">
         <TouchableOpacity
-          className={`rounded-full px-4 py-2 border-2 ${
-            !filterStatus
-              ? 'bg-primary-500 border-primary-500'
-              : 'bg-white border-gray-200'
-          }`}
+          className={`rounded-full px-4 py-2 border-2 ${!filterStatus
+            ? 'bg-primary-500 border-primary-500'
+            : 'bg-white border-gray-200'
+            }`}
           onPress={() => setFilterStatus(undefined)}
         >
           <Text
-            className={`text-sm font-medium ${
-              !filterStatus ? 'text-white' : 'text-gray-700'
-            }`}
+            className={`text-sm font-medium ${!filterStatus ? 'text-white' : 'text-gray-700'
+              }`}
           >
             Tous
           </Text>
@@ -188,17 +203,15 @@ export default function ApplicationsScreen() {
         {Object.values(ApplicationStatus).map(status => (
           <TouchableOpacity
             key={status}
-            className={`rounded-full px-4 py-2 border-2 ${
-              filterStatus === status
-                ? 'bg-primary-500 border-primary-500'
-                : 'bg-white border-gray-200'
-            }`}
+            className={`rounded-full px-4 py-2 border-2 ${filterStatus === status
+              ? 'bg-primary-500 border-primary-500'
+              : 'bg-white border-gray-200'
+              }`}
             onPress={() => setFilterStatus(filterStatus === status ? undefined : status)}
           >
             <Text
-              className={`text-sm font-medium ${
-                filterStatus === status ? 'text-white' : 'text-gray-700'
-              }`}
+              className={`text-sm font-medium ${filterStatus === status ? 'text-white' : 'text-gray-700'
+                }`}
             >
               {StatusConfig[status].label}
             </Text>

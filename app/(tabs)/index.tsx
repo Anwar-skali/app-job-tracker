@@ -1,48 +1,68 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
-import { getApplicationStats } from '@/services/jobApplication';
-import { ApplicationStats, ApplicationStatus } from '@/types/jobApplication';
+import { getApplicationStats, getApplications } from '@/services/jobApplication';
+import { ApplicationStats, JobApplication, ApplicationStatus } from '@/types/jobApplication';
 import { StatusConfig } from '@/constants';
 import { Feather } from '@expo/vector-icons';
+import { StatisticsCards } from '@/components/StatisticsCards';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Colors } from '@/constants/colors';
 
 export default function DashboardScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [stats, setStats] = useState<ApplicationStats | null>(null);
+  const [recentApplications, setRecentApplications] = useState<JobApplication[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      loadStats();
-    }
-  }, [user]);
-
-  const loadStats = async () => {
+  const loadData = async () => {
     if (!user) return;
 
     try {
-      setLoading(true);
-      const data = await getApplicationStats(user.id);
-      setStats(data);
+      const [statsData, applicationsData] = await Promise.all([
+        getApplicationStats(user.id),
+        getApplications(user.id)
+      ]);
+      setStats(statsData);
+      // Get 3 most recent applications
+      setRecentApplications(applicationsData
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+        .slice(0, 3)
+      );
     } catch (error) {
-      console.error('Error loading stats:', error);
+      console.error('Error loading dashboard data:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  if (loading) {
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [user])
+  );
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadData();
+  };
+
+  if (loading && !refreshing) {
     return (
       <View className="flex-1 items-center justify-center bg-gray-50">
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
@@ -56,112 +76,118 @@ export default function DashboardScreen() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-gray-50">
-      <View className="px-4 pt-6 pb-4">
-        <Text className="mb-2 text-3xl font-bold text-gray-900">Dashboard</Text>
-        <Text className="text-gray-600">Vue d'ensemble de vos candidatures</Text>
-      </View>
-
-      {/* Statistiques principales */}
-      <View className="flex-row gap-3 px-4 mb-4">
-        <View className="flex-1 rounded-2xl bg-white p-5 shadow-sm border border-gray-100">
-          <View className="mb-2 h-10 w-10 items-center justify-center rounded-xl bg-primary-100">
-            <Feather name="briefcase" size={20} color="#2563EB" />
+    <View className="flex-1 bg-gray-50">
+      <ScrollView
+        className="flex-1"
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
+        contentContainerStyle={{ paddingBottom: 100 }}
+      >
+        {/* Header Section */}
+        <View className="px-5 pt-4 pb-6 bg-white border-b border-gray-100">
+          <View className="flex-row justify-between items-center mb-1">
+            <Text className="text-sm font-medium text-gray-500">
+              {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </Text>
+            <TouchableOpacity
+              className="w-10 h-10 bg-gray-50 rounded-full items-center justify-center"
+              onPress={() => router.push('/(tabs)/settings')}
+            >
+              <Feather name="settings" size={20} color={Colors.textSecondary} />
+            </TouchableOpacity>
           </View>
-          <Text className="mb-1 text-3xl font-bold text-primary-500">{stats.total}</Text>
-          <Text className="text-xs text-gray-600">Total candidatures</Text>
+          <Text className="text-3xl font-bold text-gray-900">
+            Bonjour, {user?.name || 'Candidat'} 👋
+          </Text>
+          <Text className="text-base text-gray-600 mt-1">
+            Voici un aperçu de vos candidatures
+          </Text>
         </View>
-        <View className="flex-1 rounded-2xl bg-white p-5 shadow-sm border border-gray-100">
-          <View className="mb-2 h-10 w-10 items-center justify-center rounded-xl bg-purple-100">
-            <Feather name="users" size={20} color="#9333EA" />
-          </View>
-          <Text className="mb-1 text-3xl font-bold text-purple-600">{stats.interviews}</Text>
-          <Text className="text-xs text-gray-600">Entretiens</Text>
-        </View>
-        <View className="flex-1 rounded-2xl bg-white p-5 shadow-sm border border-gray-100">
-          <View className="mb-2 h-10 w-10 items-center justify-center rounded-xl bg-green-100">
-            <Feather name="trending-up" size={20} color="#10B981" />
-          </View>
-          <Text className="mb-1 text-3xl font-bold text-green-600">{stats.successRate.toFixed(1)}%</Text>
-          <Text className="text-xs text-gray-600">Taux de réussite</Text>
-        </View>
-      </View>
 
-      {/* Répartition par statut */}
-      <View className="mx-4 mb-4 rounded-2xl bg-white p-5 shadow-sm border border-gray-100">
-        <Text className="mb-4 text-xl font-bold text-gray-900">Répartition par statut</Text>
-        {Object.entries(stats.byStatus).map(([status, count]) => {
-          const statusConfig = StatusConfig[status as ApplicationStatus];
-          const percentage = stats.total > 0 ? (count / stats.total) * 100 : 0;
+        <View className="px-5 py-6">
+          {/* Main Stats */}
+          <StatisticsCards stats={stats} />
 
-          return (
-            <View key={status} className="mb-4 flex-row items-center">
-              <View className="mr-3 flex-row items-center w-28">
-                <View
-                  className="mr-2 h-3 w-3 rounded-full"
-                  style={{ backgroundColor: statusConfig.color }}
-                />
-                <Text className="text-sm text-gray-700">{statusConfig.label}</Text>
+          {/* Status Distribution Section */}
+          <View className="mt-8">
+            <Text className="text-lg font-bold text-gray-900 mb-4 px-1">Répartition des candidatures</Text>
+            <View className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+              <View className="gap-4">
+                {Object.values(ApplicationStatus).map((status) => {
+                  const count = stats?.byStatus[status] || 0;
+                  const total = stats?.total || 1; // Avoid division by zero
+                  const percentage = (count / total) * 100;
+                  const config = StatusConfig[status];
+
+                  return (
+                    <View key={status}>
+                      <View className="flex-row justify-between mb-2">
+                        <Text className="text-sm font-medium text-gray-700">{config.label}</Text>
+                        <Text className="text-sm font-bold text-gray-900">{count}</Text>
+                      </View>
+                      <View className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                        <View
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${percentage}%`,
+                            backgroundColor: config.color
+                          }}
+                        />
+                      </View>
+                    </View>
+                  );
+                })}
               </View>
-              <View className="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">
-                <View
-                  className="h-full rounded-full"
-                  style={{
-                    width: `${percentage}%`,
-                    backgroundColor: statusConfig.color,
-                  }}
-                />
-              </View>
-              <Text className="ml-3 text-sm font-semibold text-gray-900 w-8 text-right">{count}</Text>
             </View>
-          );
-        })}
-      </View>
+          </View>
 
-      {/* Évolution dans le temps */}
-      {stats.evolution.length > 0 && (
-        <View className="mx-4 mb-4 rounded-2xl bg-white p-5 shadow-sm border border-gray-100">
-          <Text className="mb-4 text-xl font-bold text-gray-900">Évolution</Text>
-          <View className="flex-row items-end justify-around h-32 py-4">
-            {stats.evolution.map((item, index) => {
-              const maxCount = Math.max(...stats.evolution.map(e => e.count));
-              const height = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
-              
-              return (
-                <View key={index} className="flex-1 items-center">
-                  <Text className="mb-2 text-xs text-gray-600 text-center">
-                    {new Date(item.date + '-01').toLocaleDateString('fr-FR', {
-                      month: 'short',
-                      year: 'numeric',
-                    })}
+          {/* Recent Applications Section */}
+          <View className="mt-8">
+            <View className="flex-row justify-between items-center mb-4 px-1">
+              <Text className="text-lg font-bold text-gray-900">Activités récentes</Text>
+              <TouchableOpacity onPress={() => router.push('/(tabs)/applications')}>
+                <Text className="text-primary-500 font-semibold text-sm">Voir tout</Text>
+              </TouchableOpacity>
+            </View>
+
+            {recentApplications.map((app) => (
+              <TouchableOpacity
+                key={app.id}
+                className="bg-white p-4 rounded-2xl mb-3 shadow-sm border border-gray-100 flex-row items-center"
+                onPress={() => router.push(`/application/${app.id}`)}
+              >
+                <View className="h-12 w-12 rounded-xl bg-gray-50 items-center justify-center mr-4 border border-gray-100">
+                  <Text className="text-lg font-bold text-gray-700">
+                    {app.company.charAt(0).toUpperCase()}
                   </Text>
-                  <View
-                    className="w-4/5 rounded-t-lg bg-primary-500 mb-1"
-                    style={{ height: Math.max(20, height) }}
-                  />
-                  <Text className="text-xs font-semibold text-gray-900">{item.count}</Text>
                 </View>
-              );
-            })}
+                <View className="flex-1">
+                  <Text className="font-bold text-gray-900 text-base mb-0.5">{app.title}</Text>
+                  <Text className="text-gray-500 text-sm">{app.company}</Text>
+                </View>
+                <View
+                  className="px-3 py-1.5 rounded-full"
+                  style={{ backgroundColor: StatusConfig[app.status]?.color + '15' }}
+                >
+                  <Text
+                    className="text-xs font-semibold"
+                    style={{ color: StatusConfig[app.status]?.color }}
+                  >
+                    {StatusConfig[app.status]?.label}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+
+            <TouchableOpacity
+              className="mt-2 bg-gray-50 p-4 rounded-xl border-2 border-dashed border-gray-200 items-center"
+              onPress={() => router.push('/application/new')}
+            >
+              <Feather name="plus" size={24} color={Colors.textSecondary} />
+              <Text className="text-gray-500 font-medium mt-1">Nouvelle candidature</Text>
+            </TouchableOpacity>
           </View>
         </View>
-      )}
-
-      {/* Actions rapides */}
-      <View className="px-4 pb-6 gap-3">
-        <TouchableOpacity
-          className="rounded-xl border-2 border-gray-200 bg-white py-4"
-          onPress={() => router.push('/(tabs)/applications' as any)}
-        >
-          <Text className="text-center text-base font-semibold text-gray-900">Voir toutes les candidatures</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          className="rounded-xl bg-primary-500 py-4 shadow-lg shadow-primary-500/30"
-          onPress={() => router.push('/application/new' as any)}
-        >
-          <Text className="text-center text-base font-semibold text-white">Ajouter une candidature</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }

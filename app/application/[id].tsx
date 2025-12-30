@@ -6,8 +6,9 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { getApplicationById, deleteApplication } from '@/services/jobApplication';
 import { JobApplication } from '@/types/jobApplication';
@@ -21,9 +22,11 @@ export default function ApplicationDetailScreen() {
   const [application, setApplication] = useState<JobApplication | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadApplication();
-  }, [id, user]);
+  useFocusEffect(
+    React.useCallback(() => {
+      loadApplication();
+    }, [id, user])
+  );
 
   const loadApplication = async () => {
     if (!user || !id) return;
@@ -46,6 +49,15 @@ export default function ApplicationDetailScreen() {
 
   const handleDelete = () => {
     if (!user || !application) return;
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('Êtes-vous sûr de vouloir supprimer cette candidature ?')) {
+        deleteApplication(application.id, user.id)
+          .then(() => router.back())
+          .catch(() => window.alert('Impossible de supprimer la candidature'));
+      }
+      return;
+    }
 
     Alert.alert(
       'Supprimer',

@@ -8,7 +8,7 @@ let initialized = false;
 
 export const initDatabase = async (): Promise<void> => {
   if (initialized) return;
-  
+
   try {
     // Vérifier si les données existent, sinon initialiser
     const data = await AsyncStorage.getItem(STORAGE_KEY);
@@ -34,10 +34,10 @@ export const getAllApplications = async (userId: string): Promise<JobApplication
   try {
     const data = await AsyncStorage.getItem(STORAGE_KEY);
     if (!data) return [];
-    
+
     const allApplications: JobApplication[] = JSON.parse(data);
-    return allApplications
-      .filter(app => app.userId === userId)
+    const userApps = allApplications.filter(app => app.userId === userId);
+    return userApps
       .sort((a, b) => new Date(b.applicationDate).getTime() - new Date(a.applicationDate).getTime());
   } catch (error) {
     console.error('Error getting applications:', error);
@@ -59,17 +59,17 @@ export const createApplication = async (application: Omit<JobApplication, 'id' |
   try {
     const data = await AsyncStorage.getItem(STORAGE_KEY);
     const allApplications: JobApplication[] = data ? JSON.parse(data) : [];
-    
+
     const newApplication: JobApplication = {
       ...application,
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    
+
     allApplications.push(newApplication);
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(allApplications));
-    
+
     return newApplication;
   } catch (error) {
     console.error('Error creating application:', error);
@@ -85,18 +85,18 @@ export const updateApplication = async (
   try {
     const data = await AsyncStorage.getItem(STORAGE_KEY);
     if (!data) return null;
-    
+
     const allApplications: JobApplication[] = JSON.parse(data);
     const index = allApplications.findIndex(app => app.id === id && app.userId === userId);
-    
+
     if (index === -1) return null;
-    
+
     allApplications[index] = {
       ...allApplications[index],
       ...updates,
       updatedAt: new Date().toISOString(),
     };
-    
+
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(allApplications));
     return allApplications[index];
   } catch (error) {
@@ -109,12 +109,12 @@ export const deleteApplication = async (id: string, userId: string): Promise<boo
   try {
     const data = await AsyncStorage.getItem(STORAGE_KEY);
     if (!data) return false;
-    
+
     const allApplications: JobApplication[] = JSON.parse(data);
     const filtered = allApplications.filter(app => !(app.id === id && app.userId === userId));
-    
+
     if (filtered.length === allApplications.length) return false;
-    
+
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
     return true;
   } catch (error) {
@@ -152,23 +152,23 @@ export const filterApplications = async (
 ): Promise<JobApplication[]> => {
   try {
     let applications = await getAllApplications(userId);
-    
+
     if (filters.status) {
       applications = applications.filter(app => app.status === filters.status);
     }
-    
+
     if (filters.contractType) {
       applications = applications.filter(app => app.contractType === filters.contractType);
     }
-    
+
     if (filters.startDate) {
       applications = applications.filter(app => app.applicationDate >= filters.startDate!);
     }
-    
+
     if (filters.endDate) {
       applications = applications.filter(app => app.applicationDate <= filters.endDate!);
     }
-    
+
     return applications;
   } catch (error) {
     console.error('Error filtering applications:', error);
