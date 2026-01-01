@@ -17,11 +17,15 @@ export interface Job {
   type: JobType; // Type d'emploi
   description?: string; // Description du poste
   salary?: string; // Salaire (ex: "50k-70k €")
-  jobUrl: string; // Lien vers l'annonce
+  jobUrl?: string; // Lien vers l'annonce
   postedDate: string; // Date de publication (ISO string)
   source?: string; // Source de l'annonce (ex: "LinkedIn", "Indeed")
   remote?: boolean; // Télétravail possible
   requirements?: string[]; // Liste des compétences requises
+  recruiterId?: string; // ID du recruteur qui a créé l'offre
+  archived?: boolean; // Offre archivée
+  createdAt?: string; // Date de création
+  updatedAt?: string; // Date de mise à jour
 }
 
 export interface JobFilters {

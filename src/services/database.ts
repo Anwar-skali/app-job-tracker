@@ -33,6 +33,45 @@ export const initDatabase = async (): Promise<void> => {
     db = await SQLite.openDatabaseAsync('jobtracker.db');
     
     await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL,
+        role TEXT NOT NULL,
+        phone TEXT,
+        address TEXT,
+        skills TEXT,
+        experience TEXT,
+        education TEXT,
+        linkedinUrl TEXT,
+        companyName TEXT,
+        companySector TEXT,
+        companyWebsite TEXT,
+        companySize TEXT,
+        createdAt TEXT NOT NULL,
+        updatedAt TEXT NOT NULL
+      );
+      
+      CREATE TABLE IF NOT EXISTS jobs (
+        id TEXT PRIMARY KEY NOT NULL,
+        title TEXT NOT NULL,
+        company TEXT NOT NULL,
+        location TEXT NOT NULL,
+        type TEXT NOT NULL,
+        description TEXT,
+        salary TEXT,
+        jobUrl TEXT,
+        postedDate TEXT NOT NULL,
+        source TEXT,
+        remote INTEGER DEFAULT 0,
+        requirements TEXT,
+        recruiterId TEXT NOT NULL,
+        archived INTEGER DEFAULT 0,
+        createdAt TEXT NOT NULL,
+        updatedAt TEXT NOT NULL
+      );
+      
       CREATE TABLE IF NOT EXISTS applications (
         id TEXT PRIMARY KEY NOT NULL,
         title TEXT NOT NULL,
@@ -44,14 +83,46 @@ export const initDatabase = async (): Promise<void> => {
         status TEXT NOT NULL,
         notes TEXT,
         documents TEXT,
+        cvUrl TEXT,
+        cvFileName TEXT,
+        jobId TEXT,
         userId TEXT NOT NULL,
+        recruiterId TEXT,
+        lastFollowUp TEXT,
+        followUpCount INTEGER DEFAULT 0,
         createdAt TEXT NOT NULL,
         updatedAt TEXT NOT NULL
+      );
+      
+      CREATE TABLE IF NOT EXISTS application_history (
+        id TEXT PRIMARY KEY NOT NULL,
+        applicationId TEXT NOT NULL,
+        oldStatus TEXT,
+        newStatus TEXT NOT NULL,
+        changedBy TEXT NOT NULL,
+        changedAt TEXT NOT NULL,
+        notes TEXT,
+        FOREIGN KEY (applicationId) REFERENCES applications(id)
+      );
+      
+      CREATE TABLE IF NOT EXISTS messages (
+        id TEXT PRIMARY KEY NOT NULL,
+        applicationId TEXT NOT NULL,
+        senderId TEXT NOT NULL,
+        senderRole TEXT NOT NULL,
+        message TEXT NOT NULL,
+        createdAt TEXT NOT NULL,
+        read INTEGER DEFAULT 0,
+        FOREIGN KEY (applicationId) REFERENCES applications(id)
       );
       
       CREATE INDEX IF NOT EXISTS idx_userId ON applications(userId);
       CREATE INDEX IF NOT EXISTS idx_status ON applications(status);
       CREATE INDEX IF NOT EXISTS idx_applicationDate ON applications(applicationDate);
+      CREATE INDEX IF NOT EXISTS idx_jobId ON applications(jobId);
+      CREATE INDEX IF NOT EXISTS idx_recruiterId ON applications(recruiterId);
+      CREATE INDEX IF NOT EXISTS idx_userEmail ON users(email);
+      CREATE INDEX IF NOT EXISTS idx_jobRecruiterId ON jobs(recruiterId);
     `);
     
     console.log('Database initialized successfully (SQLite)');
@@ -78,13 +149,15 @@ export const getAllApplications = async (userId: string): Promise<JobApplication
   
   const database = getDatabase();
   try {
-    const result = await database.getAllAsync<JobApplication>(
+    const result = await database.getAllAsync<any>(
       'SELECT * FROM applications WHERE userId = ? ORDER BY applicationDate DESC',
       [userId]
     );
     return result.map(app => ({
       ...app,
       documents: app.documents ? JSON.parse(app.documents) : [],
+      lastFollowUp: app.lastFollowUp || undefined,
+      followUpCount: app.followUpCount || 0,
     }));
   } catch (error) {
     console.error('Error getting applications:', error);
@@ -101,7 +174,7 @@ export const getApplicationById = async (id: string, userId: string): Promise<Jo
   
   const database = getDatabase();
   try {
-    const result = await database.getFirstAsync<JobApplication>(
+    const result = await database.getFirstAsync<any>(
       'SELECT * FROM applications WHERE id = ? AND userId = ?',
       [id, userId]
     );
@@ -109,6 +182,8 @@ export const getApplicationById = async (id: string, userId: string): Promise<Jo
     return {
       ...result,
       documents: result.documents ? JSON.parse(result.documents) : [],
+      lastFollowUp: result.lastFollowUp || undefined,
+      followUpCount: result.followUpCount || 0,
     };
   } catch (error) {
     console.error('Error getting application by id:', error);
@@ -116,7 +191,36 @@ export const getApplicationById = async (id: string, userId: string): Promise<Jo
   }
 };
 
+// Vérifier si un utilisateur a déjà postulé à une offre
+export const hasUserAppliedToJob = async (userId: string, jobId: string): Promise<boolean> => {
+  // Sur web, utiliser AsyncStorage
+  if (Platform.OS === 'web') {
+    const webDb = await import('./database.web');
+    return await webDb.hasUserAppliedToJob(userId, jobId);
+  }
+  
+  const database = getDatabase();
+  try {
+    const result = await database.getFirstAsync<{ count: number }>(
+      'SELECT COUNT(*) as count FROM applications WHERE userId = ? AND jobId = ?',
+      [userId, jobId]
+    );
+    return (result?.count || 0) > 0;
+  } catch (error) {
+    console.error('Error checking if user applied:', error);
+    return false;
+  }
+};
+
 export const createApplication = async (application: Omit<JobApplication, 'id' | 'createdAt' | 'updatedAt'>): Promise<JobApplication> => {
+  // Vérifier si l'utilisateur a déjà postulé à cette offre
+  if (application.jobId && application.userId) {
+    const alreadyApplied = await hasUserAppliedToJob(application.userId, application.jobId);
+    if (alreadyApplied) {
+      throw new Error('Vous avez déjà postulé à cette offre');
+    }
+  }
+
   // Sur web, utiliser AsyncStorage
   if (Platform.OS === 'web') {
     const webDb = await import('./database.web');
@@ -138,8 +242,9 @@ export const createApplication = async (application: Omit<JobApplication, 'id' |
     await database.runAsync(
       `INSERT INTO applications (
         id, title, company, location, jobUrl, contractType, 
-        applicationDate, status, notes, documents, userId, createdAt, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        applicationDate, status, notes, documents, cvUrl, cvFileName, jobId, recruiterId, userId, 
+        lastFollowUp, followUpCount, createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         newApplication.id,
         newApplication.title,
@@ -151,7 +256,13 @@ export const createApplication = async (application: Omit<JobApplication, 'id' |
         newApplication.status,
         newApplication.notes || null,
         newApplication.documents ? JSON.stringify(newApplication.documents) : null,
+        newApplication.cvUrl || null,
+        newApplication.cvFileName || null,
+        newApplication.jobId || null,
+        newApplication.recruiterId || null,
         newApplication.userId,
+        newApplication.lastFollowUp || null,
+        newApplication.followUpCount || 0,
         newApplication.createdAt,
         newApplication.updatedAt,
       ]
@@ -189,7 +300,8 @@ export const updateApplication = async (
     await database.runAsync(
       `UPDATE applications SET
         title = ?, company = ?, location = ?, jobUrl = ?, contractType = ?,
-        applicationDate = ?, status = ?, notes = ?, documents = ?, updatedAt = ?
+        applicationDate = ?, status = ?, notes = ?, documents = ?, cvUrl = ?, cvFileName = ?, 
+        lastFollowUp = ?, followUpCount = ?, updatedAt = ?
       WHERE id = ? AND userId = ?`,
       [
         updated.title,
@@ -201,6 +313,10 @@ export const updateApplication = async (
         updated.status,
         updated.notes || null,
         updated.documents ? JSON.stringify(updated.documents) : null,
+        updated.cvUrl || null,
+        updated.cvFileName || null,
+        updated.lastFollowUp || null,
+        updated.followUpCount || 0,
         updated.updatedAt,
         id,
         userId,
@@ -257,6 +373,55 @@ export const searchApplications = async (
     }));
   } catch (error) {
     console.error('Error searching applications:', error);
+    return [];
+  }
+};
+
+// Récupérer les candidatures reçues par un recruteur
+export const getApplicationsByRecruiter = async (recruiterId: string): Promise<JobApplication[]> => {
+  // Sur web, utiliser AsyncStorage
+  if (Platform.OS === 'web') {
+    const webDb = await import('./database.web');
+    return await webDb.getApplicationsByRecruiter(recruiterId);
+  }
+
+  const database = getDatabase();
+  try {
+    const result = await database.getAllAsync<any>(
+      'SELECT * FROM applications WHERE recruiterId = ? ORDER BY applicationDate DESC',
+      [recruiterId]
+    );
+    return result.map(app => ({
+      ...app,
+      documents: app.documents ? JSON.parse(app.documents) : [],
+      lastFollowUp: app.lastFollowUp || undefined,
+      followUpCount: app.followUpCount || 0,
+    }));
+  } catch (error) {
+    console.error('Error getting applications by recruiter:', error);
+    return [];
+  }
+};
+
+// Récupérer toutes les candidatures (Admin uniquement)
+export const getAllApplicationsAdmin = async (): Promise<JobApplication[]> => {
+  // Sur web, utiliser AsyncStorage
+  if (Platform.OS === 'web') {
+    const webDb = await import('./database.web');
+    return await webDb.getAllApplicationsAdmin();
+  }
+
+  const database = getDatabase();
+  try {
+    const result = await database.getAllAsync<JobApplication>(
+      'SELECT * FROM applications ORDER BY applicationDate DESC'
+    );
+    return result.map(app => ({
+      ...app,
+      documents: app.documents ? JSON.parse(app.documents) : [],
+    }));
+  } catch (error) {
+    console.error('Error getting all applications:', error);
     return [];
   }
 };

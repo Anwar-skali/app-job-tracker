@@ -2,15 +2,20 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Linking, Share, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { getJobById } from '@/services/job';
+import { getJobById as getMockJobById } from '@/services/job';
+import { getJobById, deleteJob, hasApplications } from '@/services/jobService';
 import { Job, JobType } from '@/types/job';
 import { Colors } from '@/constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+  const { isRecruiter } = usePermissions();
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -22,7 +27,18 @@ export default function JobDetailScreen() {
     if (!id) return;
     try {
       setLoading(true);
-      const data = await getJobById(id);
+      // Essayer d'abord de récupérer depuis la base de données (offres créées par recruteurs)
+      let data = await getJobById(id);
+      
+      // Si pas trouvé, essayer les offres mockées
+      if (!data) {
+        try {
+          data = await getMockJobById(id);
+        } catch (e) {
+          // Ignorer l'erreur si l'offre n'existe pas dans les mockées non plus
+        }
+      }
+      
       setJob(data);
     } catch (error) {
       console.error('Error loading job:', error);
@@ -39,10 +55,11 @@ export default function JobDetailScreen() {
     router.push({
       pathname: '/application/new',
       params: {
+        jobId: job.id,
         title: job.title,
         company: job.company,
         location: job.location,
-        jobUrl: job.jobUrl,
+        jobUrl: job.jobUrl || '',
       }
     });
   };
@@ -58,6 +75,49 @@ export default function JobDetailScreen() {
     } catch (error) {
       console.error(error);
     }
+  };
+
+  const handleDelete = async () => {
+    if (!job || !user) return;
+
+    // Vérifier si l'offre a des candidatures
+    const hasApps = await hasApplications(job.id);
+    
+    if (hasApps) {
+      Alert.alert(
+        'Impossible de supprimer',
+        'Cette offre a des candidatures en cours. Vous ne pouvez pas la supprimer.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Supprimer l\'offre',
+      `Êtes-vous sûr de vouloir supprimer l'offre "${job.title}" ? Cette action est irréversible.`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const success = await deleteJob(job.id, user.id);
+              if (success) {
+                Alert.alert('Succès', 'Offre supprimée avec succès', [
+                  { text: 'OK', onPress: () => router.back() }
+                ]);
+              } else {
+                Alert.alert('Erreur', 'Impossible de supprimer l\'offre');
+              }
+            } catch (error) {
+              console.error('Error deleting job:', error);
+              Alert.alert('Erreur', 'Une erreur est survenue lors de la suppression');
+            }
+          },
+        },
+      ]
+    );
   };
 
   if (loading) {
@@ -188,18 +248,74 @@ export default function JobDetailScreen() {
         </View>
       </ScrollView>
 
-      {/* Footer Action */}
-      <View 
-        className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-5 py-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]"
-        style={{ paddingBottom: Math.max(insets.bottom, 16) }}
-      >
-        <TouchableOpacity
-          className="w-full bg-primary-500 py-4 rounded-xl items-center shadow-lg shadow-primary-500/30 active:opacity-90"
-          onPress={handleApply}
+      {/* Footer Action - Only show for candidates */}
+      {!isRecruiter && (
+        <View 
+          className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-5 py-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]"
+          style={{ paddingBottom: Math.max(insets.bottom, 16) }}
         >
-          <Text className="text-white text-base font-bold">Postuler maintenant</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity
+            className="w-full bg-primary-500 py-4 rounded-xl items-center shadow-lg shadow-primary-500/30 active:opacity-90"
+            onPress={handleApply}
+          >
+            <Text className="text-white text-base font-bold">Postuler maintenant</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      
+      {/* Footer Action for Recruiters - Show edit/delete if it's their job */}
+      {isRecruiter && job && job.recruiterId === user?.id && (
+        <View 
+          className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-5 py-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]"
+          style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+        >
+          <View className="flex-row gap-2 mb-2">
+            <TouchableOpacity
+              className="flex-1 bg-blue-500 py-3 rounded-xl items-center shadow-lg active:opacity-90"
+              onPress={() => router.push(`/job/${job.id}/edit`)}
+            >
+              <Text className="text-white text-sm font-bold">Modifier</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="flex-1 bg-primary-500 py-3 rounded-xl items-center shadow-lg shadow-primary-500/30 active:opacity-90"
+              onPress={() => router.push(`/recruiter/applications?jobId=${job.id}`)}
+            >
+              <Text className="text-white text-sm font-bold">Candidatures</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="flex-1 bg-green-500 py-3 rounded-xl items-center shadow-lg active:opacity-90"
+              onPress={() => {
+                router.push({
+                  pathname: '/job/new',
+                  params: {
+                    duplicate: 'true',
+                    title: job.title,
+                    company: job.company,
+                    location: job.location,
+                    type: job.type,
+                    description: job.description || '',
+                    salary: job.salary || '',
+                    jobUrl: job.jobUrl || '',
+                    remote: job.remote ? 'true' : 'false',
+                    requirements: job.requirements ? JSON.stringify(job.requirements) : '',
+                  }
+                });
+              }}
+            >
+              <Text className="text-white text-sm font-bold">Dupliquer</Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity
+            className="bg-red-500 py-3 rounded-xl items-center shadow-lg active:opacity-90"
+            onPress={handleDelete}
+          >
+            <View className="flex-row items-center">
+              <Feather name="trash-2" size={18} color="#FFFFFF" />
+              <Text className="ml-2 text-white text-sm font-bold">Supprimer l'offre</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }

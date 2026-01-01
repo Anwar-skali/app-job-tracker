@@ -10,11 +10,16 @@ import {
   Alert,
   Linking,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { JobList } from '@/components/JobList';
 import { fetchJobs, searchJobs } from '@/services/job';
+import { getAllJobs, fetchJobsByRecruiter } from '@/services/jobService';
+import { saveSearch, getSavedSearches, deleteSavedSearch, SavedSearch } from '@/services/savedSearchService';
 import { Job, JobFilters, JobType } from '@/types/job';
 import { Colors } from '@/constants/colors';
+import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const JobTypeLabels: Record<JobType, string> = {
   [JobType.FULL_TIME]: 'Temps plein',
@@ -26,11 +31,16 @@ const JobTypeLabels: Record<JobType, string> = {
 };
 
 export default function JobsScreen() {
+  const router = useRouter();
+  const { user } = useAuth();
+  const { isRecruiter } = usePermissions();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<JobFilters>({});
   const [showFilters, setShowFilters] = useState(false);
+  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
+  const [showSavedSearches, setShowSavedSearches] = useState(false);
 
   useEffect(() => {
     loadJobs();
@@ -52,11 +62,26 @@ export default function JobsScreen() {
   const loadJobs = async () => {
     try {
       setLoading(true);
-      const data = await fetchJobs({
-        ...filters,
-        limit: 50,
-      });
-      setJobs(data);
+      if (isRecruiter && user?.id) {
+        // Pour les recruteurs, afficher uniquement leurs offres
+        const recruiterJobs = await fetchJobsByRecruiter(user.id, { ...filters, limit: 50 }).catch(() => []);
+        setJobs(recruiterJobs);
+      } else {
+        // Pour les postulants, afficher toutes les offres disponibles
+        const [mockJobs, recruiterJobs] = await Promise.all([
+          fetchJobs({
+            ...filters,
+            limit: 50,
+          }).catch(() => []),
+          getAllJobs().catch(() => []),
+        ]);
+        // Combiner et dédupliquer par ID
+        const allJobs = [...mockJobs, ...recruiterJobs];
+        const uniqueJobs = allJobs.filter((job, index, self) =>
+          index === self.findIndex(j => j.id === job.id)
+        );
+        setJobs(uniqueJobs);
+      }
     } catch (error) {
       Alert.alert('Erreur', 'Impossible de charger les offres d\'emploi');
       console.error(error);
@@ -80,7 +105,6 @@ export default function JobsScreen() {
 
   const handleJobPress = (job: Job) => {
     // Naviguer vers l'écran de détails du job
-    // @ts-ignore
     router.push(`/job/${job.id}`);
   };
 
@@ -134,7 +158,111 @@ export default function JobsScreen() {
             color={showFilters ? Colors.primary : Colors.textSecondary}
           />
         </TouchableOpacity>
+        {!isRecruiter && (
+          <TouchableOpacity
+            style={styles.filterButton}
+            onPress={() => setShowSavedSearches(!showSavedSearches)}
+          >
+            <Feather
+              name="bookmark"
+              size={20}
+              color={showSavedSearches ? Colors.primary : Colors.textSecondary}
+            />
+          </TouchableOpacity>
+        )}
       </View>
+
+      {/* Saved Searches Panel */}
+      {showSavedSearches && !isRecruiter && (
+        <View style={styles.filtersPanel}>
+          <View style={styles.filtersHeader}>
+            <Text style={styles.filtersTitle}>Recherches sauvegardées</Text>
+            <TouchableOpacity
+              onPress={async () => {
+                if (!user?.id) return;
+                try {
+                  Alert.prompt(
+                    'Nom de la recherche',
+                    'Donnez un nom à cette recherche',
+                    [
+                      { text: 'Annuler', style: 'cancel' },
+                      {
+                        text: 'Sauvegarder',
+                        onPress: async (name) => {
+                          if (name) {
+                            await saveSearch({
+                              userId: user.id,
+                              name,
+                              searchQuery,
+                              filters,
+                              alertEnabled: false,
+                            });
+                            await loadSavedSearches();
+                            Alert.alert('Succès', 'Recherche sauvegardée');
+                          }
+                        },
+                      },
+                    ],
+                    'plain-text'
+                  );
+                } catch (error) {
+                  Alert.alert('Erreur', 'Impossible de sauvegarder la recherche');
+                }
+              }}
+            >
+              <Feather name="plus" size={20} color={Colors.primary} />
+            </TouchableOpacity>
+          </View>
+          <ScrollView>
+            {savedSearches.length === 0 ? (
+              <Text style={styles.emptyText}>Aucune recherche sauvegardée</Text>
+            ) : (
+              savedSearches.map((search) => (
+                <View key={search.id} style={styles.savedSearchItem}>
+                  <TouchableOpacity
+                    style={styles.savedSearchContent}
+                    onPress={async () => {
+                      setSearchQuery(search.searchQuery || '');
+                      setFilters(search.filters);
+                      await updateSavedSearch(search.id, {});
+                      setShowSavedSearches(false);
+                    }}
+                  >
+                    <Feather name="search" size={16} color={Colors.primary} />
+                    <View style={styles.savedSearchInfo}>
+                      <Text style={styles.savedSearchName}>{search.name}</Text>
+                      <Text style={styles.savedSearchDetails} numberOfLines={1}>
+                        {search.searchQuery || 'Aucun terme'} • {Object.keys(search.filters).length} filtre(s)
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      Alert.alert(
+                        'Supprimer',
+                        `Voulez-vous supprimer "${search.name}" ?`,
+                        [
+                          { text: 'Annuler', style: 'cancel' },
+                          {
+                            text: 'Supprimer',
+                            style: 'destructive',
+                            onPress: async () => {
+                              await deleteSavedSearch(search.id);
+                              await loadSavedSearches();
+                            },
+                          },
+                        ]
+                      );
+                    }}
+                  >
+                    <Feather name="trash-2" size={16} color={Colors.error} />
+                  </TouchableOpacity>
+                </View>
+              ))
+            )}
+          </ScrollView>
+        </View>
+      )}
 
       {/* Filters Panel */}
       {showFilters && (

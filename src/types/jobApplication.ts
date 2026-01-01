@@ -18,6 +18,16 @@ export enum ContractType {
   OTHER = 'Autre',
 }
 
+export interface ApplicationHistory {
+  id: string;
+  applicationId: string;
+  oldStatus?: ApplicationStatus;
+  newStatus: ApplicationStatus;
+  changedBy: string; // userId ou recruiterId
+  changedAt: string;
+  notes?: string;
+}
+
 export interface JobApplication {
   id: string;
   title: string; // Titre du poste
@@ -29,7 +39,13 @@ export interface JobApplication {
   status: ApplicationStatus; // Statut
   notes?: string; // Notes
   documents?: string[]; // Chemins vers documents joints (CV, lettre)
-  userId: string; // ID de l'utilisateur propriétaire
+  cvUrl?: string; // URI du CV uploadé (file:// ou base64)
+  cvFileName?: string; // Nom du fichier CV
+  jobId?: string; // ID de l'offre d'emploi (si postulé depuis une offre)
+  userId: string; // ID de l'utilisateur candidat
+  recruiterId?: string; // ID du recruteur qui a créé l'offre
+  lastFollowUp?: string; // Date de dernière relance (ISO string)
+  followUpCount?: number; // Nombre de relances
   createdAt: string; // Date de création
   updatedAt: string; // Date de mise à jour
 }
