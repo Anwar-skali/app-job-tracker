@@ -131,27 +131,46 @@ export const searchJobs = async (
     // const data = await response.json();
     // return data.jobs;
 
-    // Pour l'instant, utiliser les données mockées avec recherche locale
-    let jobs = [...MOCK_JOBS];
+    // Récupérer aussi les offres de la base de données
+    const { getAllJobs } = await import('./jobService');
+    const dbJobs = await getAllJobs().catch(() => []);
+    
+    // Combiner avec les offres mockées
+    let allJobs = [...MOCK_JOBS, ...dbJobs];
+    
+    // Dédupliquer par ID
+    const uniqueJobs = allJobs.filter((job, index, self) =>
+      index === self.findIndex(j => j.id === job.id)
+    );
 
-    // Recherche par terme
+    // Recherche par terme (titre, entreprise, lieu, description, compétences)
     if (query) {
       const lowerQuery = query.toLowerCase();
-      jobs = jobs.filter(
-        job =>
-          job.title.toLowerCase().includes(lowerQuery) ||
-          job.company.toLowerCase().includes(lowerQuery) ||
-          job.location.toLowerCase().includes(lowerQuery) ||
-          job.description?.toLowerCase().includes(lowerQuery)
+      allJobs = uniqueJobs.filter(
+        job => {
+          const matchesTitle = job.title.toLowerCase().includes(lowerQuery);
+          const matchesCompany = job.company.toLowerCase().includes(lowerQuery);
+          const matchesLocation = job.location.toLowerCase().includes(lowerQuery);
+          const matchesDescription = job.description?.toLowerCase().includes(lowerQuery) || false;
+          const matchesRequirements = job.requirements?.some(req => 
+            req.toLowerCase().includes(lowerQuery)
+          ) || false;
+          const matchesSalary = job.salary?.toLowerCase().includes(lowerQuery) || false;
+          
+          return matchesTitle || matchesCompany || matchesLocation || 
+                 matchesDescription || matchesRequirements || matchesSalary;
+        }
       );
+    } else {
+      allJobs = uniqueJobs;
     }
 
     // Appliquer les autres filtres
     if (filters) {
-      jobs = applyFilters(jobs, filters);
+      allJobs = applyFilters(allJobs, filters);
     }
 
-    return jobs;
+    return allJobs;
   } catch (error) {
     console.error('Error searching jobs:', error);
     throw new Error('Impossible de rechercher les offres d\'emploi');

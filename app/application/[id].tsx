@@ -6,11 +6,14 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
-import { getApplicationById, deleteApplication } from '@/services/jobApplication';
-import { JobApplication } from '@/types/jobApplication';
+import { getApplicationById, deleteApplication, createApplication } from '@/services/jobApplication';
+import { getApplicationHistory } from '@/services/applicationHistory';
+import { scheduleReminderNotification } from '@/services/notificationService';
+import { JobApplication, ApplicationStatus, ApplicationHistory } from '@/types/jobApplication';
 import { StatusConfig, ContractTypeLabels } from '@/constants';
 import { Feather } from '@expo/vector-icons';
 
@@ -19,24 +22,31 @@ export default function ApplicationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const [application, setApplication] = useState<JobApplication | null>(null);
+  const [history, setHistory] = useState<ApplicationHistory[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadApplication();
-  }, [id, user]);
+  useFocusEffect(
+    React.useCallback(() => {
+      loadApplication();
+    }, [id, user])
+  );
 
   const loadApplication = async () => {
     if (!user || !id) return;
 
     try {
       setLoading(true);
-      const data = await getApplicationById(id, user.id);
+      const [data, historyData] = await Promise.all([
+        getApplicationById(id, user.id),
+        getApplicationHistory(id),
+      ]);
       if (!data) {
         Alert.alert('Erreur', 'Candidature non trouvée');
         router.back();
         return;
       }
       setApplication(data);
+      setHistory(historyData);
     } catch (error) {
       Alert.alert('Erreur', 'Impossible de charger la candidature');
     } finally {
@@ -46,6 +56,15 @@ export default function ApplicationDetailScreen() {
 
   const handleDelete = () => {
     if (!user || !application) return;
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('Êtes-vous sûr de vouloir supprimer cette candidature ?')) {
+        deleteApplication(application.id, user.id)
+          .then(() => router.back())
+          .catch(() => window.alert('Impossible de supprimer la candidature'));
+      }
+      return;
+    }
 
     Alert.alert(
       'Supprimer',
@@ -139,6 +158,18 @@ export default function ApplicationDetailScreen() {
         </View>
       )}
 
+      {application.lastFollowUp && (
+        <View className="bg-white px-4 py-5 mb-2 border-b border-gray-200">
+          <Text className="mb-2 text-lg font-bold text-gray-900">Relances</Text>
+          <Text className="text-sm text-gray-600 mb-1">
+            Dernière relance : {new Date(application.lastFollowUp).toLocaleDateString('fr-FR')}
+          </Text>
+          <Text className="text-sm text-gray-600">
+            Nombre de relances : {application.followUpCount || 0}
+          </Text>
+        </View>
+      )}
+
       {application.documents && application.documents.length > 0 && (
         <View className="bg-white px-4 py-5 mb-2 border-b border-gray-200">
           <Text className="mb-3 text-lg font-bold text-gray-900">Documents joints</Text>
@@ -151,15 +182,89 @@ export default function ApplicationDetailScreen() {
         </View>
       )}
 
-      <View className="flex-row gap-3 px-4 py-6">
+      <View className="px-4 py-6 gap-3">
+        <View className="flex-row gap-3">
+          <TouchableOpacity
+            className="flex-1 rounded-xl bg-primary-500 py-4 shadow-lg shadow-primary-500/30"
+            onPress={() => router.push(`/application/${application.id}/edit` as any)}
+          >
+            <Text className="text-center text-base font-semibold text-white">Modifier</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            className="flex-1 rounded-xl bg-green-500 py-4 shadow-lg"
+            onPress={async () => {
+              if (!user || !application) return;
+              try {
+                await createApplication({
+                  title: application.title,
+                  company: application.company,
+                  location: application.location,
+                  jobUrl: application.jobUrl,
+                  contractType: application.contractType,
+                  applicationDate: new Date().toISOString().split('T')[0],
+                  status: ApplicationStatus.TO_APPLY,
+                  notes: '',
+                  cvUrl: application.cvUrl,
+                  cvFileName: application.cvFileName,
+                  jobId: application.jobId,
+                  recruiterId: application.recruiterId,
+                  userId: user.id,
+                });
+                Alert.alert('Succès', 'Candidature dupliquée avec succès');
+                router.push('/(tabs)/applications');
+              } catch (error) {
+                Alert.alert('Erreur', 'Impossible de dupliquer la candidature');
+              }
+            }}
+          >
+            <Text className="text-center text-base font-semibold text-white">Dupliquer</Text>
+          </TouchableOpacity>
+        </View>
+        
+        {/* Relance button - only for sent/interview status */}
+        {(application.status === ApplicationStatus.SENT || application.status === ApplicationStatus.INTERVIEW) && (
+          <TouchableOpacity
+            className="w-full rounded-xl bg-orange-500 py-4 shadow-lg flex-row items-center justify-center"
+            onPress={async () => {
+              if (!user || !application) return;
+              try {
+                const followUpCount = (application.followUpCount || 0) + 1;
+                await updateApplication(application.id, {
+                  lastFollowUp: new Date().toISOString(),
+                  followUpCount: followUpCount,
+                }, user.id);
+                
+                // Planifier une notification de rappel dans 7 jours
+                const settings = await import('@/services/notificationService').then(m => m.getNotificationSettings());
+                if (settings.enabled && settings.reminders) {
+                  await scheduleReminderNotification(
+                    application.id,
+                    application.title,
+                    application.company,
+                    settings.reminderDays || 7
+                  );
+                }
+                
+                Alert.alert('Succès', `Relance enregistrée (${followUpCount} relance${followUpCount > 1 ? 's' : ''})`);
+                // Recharger les données
+                const updated = await getApplicationById(application.id, user.id);
+                if (updated) {
+                  setApplication(updated);
+                }
+              } catch (error) {
+                Alert.alert('Erreur', 'Impossible d\'enregistrer la relance');
+              }
+            }}
+          >
+            <Feather name="send" size={18} color="#FFFFFF" />
+            <Text className="ml-2 text-center text-base font-semibold text-white">
+              Relancer le recruteur
+            </Text>
+          </TouchableOpacity>
+        )}
+        
         <TouchableOpacity
-          className="flex-1 rounded-xl bg-primary-500 py-4 shadow-lg shadow-primary-500/30"
-          onPress={() => router.push(`/application/${application.id}/edit` as any)}
-        >
-          <Text className="text-center text-base font-semibold text-white">Modifier</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          className="flex-1 rounded-xl bg-red-500 py-4 shadow-lg"
+          className="w-full rounded-xl bg-red-500 py-4 shadow-lg"
           onPress={handleDelete}
         >
           <Text className="text-center text-base font-semibold text-white">Supprimer</Text>

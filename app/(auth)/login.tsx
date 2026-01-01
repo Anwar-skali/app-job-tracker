@@ -128,7 +128,18 @@ export default function LoginScreen() {
           ) : null}
 
           <Pressable
-            className={`mb-6 rounded-xl bg-primary-500 py-4 shadow-lg shadow-primary-500/30 ${loading ? 'opacity-60' : ''}`}
+            style={{
+              marginBottom: 24,
+              borderRadius: 16,
+              backgroundColor: '#3B82F6',
+              paddingVertical: 20,
+              shadowColor: '#3B82F6',
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.4,
+              shadowRadius: 12,
+              elevation: 8,
+              opacity: loading ? 0.6 : 1,
+            }}
             onPress={onSubmit}
             disabled={loading}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -136,7 +147,10 @@ export default function LoginScreen() {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text className="text-center text-base font-semibold text-white">Se connecter</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                <Feather name="log-in" size={20} color="#FFFFFF" />
+                <Text style={{ marginLeft: 8, textAlign: 'center', fontSize: 16, fontWeight: 'bold', color: '#fff' }}>Se connecter</Text>
+              </View>
             )}
           </Pressable>
 

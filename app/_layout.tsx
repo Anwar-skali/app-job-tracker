@@ -61,6 +61,16 @@ export default function RootLayout() {
           <Stack.Screen name="application/new" options={{ title: 'Nouvelle candidature', presentation: 'modal' }} />
           <Stack.Screen name="application/[id]" options={{ title: 'Détails' }} />
           <Stack.Screen name="application/[id]/edit" options={{ title: 'Modifier' }} />
+          <Stack.Screen name="job/new" options={{ title: 'Nouvelle offre', presentation: 'modal' }} />
+          <Stack.Screen name="job/[id]" options={{ title: 'Détails de l\'offre' }} />
+          <Stack.Screen name="job/[id]/edit" options={{ title: 'Modifier l\'offre' }} />
+          <Stack.Screen name="recruiter/applications" options={{ title: 'Candidatures reçues' }} />
+          <Stack.Screen name="recruiter/jobs" options={{ title: 'Mes offres' }} />
+          <Stack.Screen name="profile/edit" options={{ title: 'Modifier le profil' }} />
+          <Stack.Screen name="admin/dashboard" options={{ title: 'Dashboard Admin' }} />
+          <Stack.Screen name="admin/users" options={{ title: 'Gestion des utilisateurs' }} />
+          <Stack.Screen name="admin/jobs" options={{ title: 'Gestion des offres' }} />
+          <Stack.Screen name="admin/applications" options={{ title: 'Gestion des candidatures' }} />
         </Stack>
       </AuthProvider>
     </DatabaseInitializer>

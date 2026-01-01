@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
@@ -64,11 +65,17 @@ export default function EditApplicationScreen() {
     try {
       setSaving(true);
       await updateApplication(id, formData, user.id);
-      Alert.alert('Succès', 'Candidature modifiée avec succès', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+
+      // Retour immédiat sans alerte ("fluide")
+      router.back();
+
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible de modifier la candidature');
+      console.error('Erreur update:', error);
+      if (Platform.OS === 'web') {
+        window.alert('Impossible de modifier la candidature');
+      } else {
+        Alert.alert('Erreur', 'Impossible de modifier la candidature');
+      }
     } finally {
       setSaving(false);
     }
@@ -136,17 +143,15 @@ export default function EditApplicationScreen() {
             {Object.values(ContractType).map(type => (
               <TouchableOpacity
                 key={type}
-                className={`rounded-full px-4 py-2 border-2 ${
-                  formData.contractType === type
-                    ? 'bg-primary-500 border-primary-500'
-                    : 'bg-white border-gray-200'
-                }`}
+                className={`rounded-full px-4 py-2 border-2 ${formData.contractType === type
+                  ? 'bg-primary-500 border-primary-500'
+                  : 'bg-white border-gray-200'
+                  }`}
                 onPress={() => setFormData({ ...formData, contractType: type })}
               >
                 <Text
-                  className={`text-sm font-medium ${
-                    formData.contractType === type ? 'text-white' : 'text-gray-700'
-                  }`}
+                  className={`text-sm font-medium ${formData.contractType === type ? 'text-white' : 'text-gray-700'
+                    }`}
                 >
                   {type}
                 </Text>
@@ -172,17 +177,15 @@ export default function EditApplicationScreen() {
             {Object.values(ApplicationStatus).map(status => (
               <TouchableOpacity
                 key={status}
-                className={`rounded-full px-4 py-2 border-2 ${
-                  formData.status === status
-                    ? 'bg-primary-500 border-primary-500'
-                    : 'bg-white border-gray-200'
-                }`}
+                className={`rounded-full px-4 py-2 border-2 ${formData.status === status
+                  ? 'bg-primary-500 border-primary-500'
+                  : 'bg-white border-gray-200'
+                  }`}
                 onPress={() => setFormData({ ...formData, status })}
               >
                 <Text
-                  className={`text-sm font-medium ${
-                    formData.status === status ? 'text-white' : 'text-gray-700'
-                  }`}
+                  className={`text-sm font-medium ${formData.status === status ? 'text-white' : 'text-gray-700'
+                    }`}
                 >
                   {status}
                 </Text>

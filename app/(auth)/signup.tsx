@@ -21,6 +21,7 @@ export default function SignupScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [userRole, setUserRole] = useState<'recruiter' | 'candidate'>('candidate');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -68,7 +69,7 @@ export default function SignupScreen() {
     try {
       setLoading(true);
       console.log('Calling signup service...');
-      await signup({ name: name.trim(), email: email.trim(), password });
+      await signup({ name: name.trim(), email: email.trim(), password, role: userRole });
       console.log('Signup successful, redirecting...');
       router.replace('/(tabs)');
     } catch (e) {
@@ -186,6 +187,54 @@ export default function SignupScreen() {
             </View>
           </View>
 
+          <View className="mb-5">
+            <Text className="mb-2 text-sm font-semibold text-gray-700">Je suis</Text>
+            <View className="flex-row gap-3">
+              <Pressable
+                onPress={() => setUserRole('candidate')}
+                className={`flex-1 rounded-xl border-2 py-4 items-center ${
+                  userRole === 'candidate'
+                    ? 'bg-primary-500 border-primary-500'
+                    : 'bg-gray-50 border-gray-200'
+                }`}
+              >
+                <Feather
+                  name="user"
+                  size={24}
+                  color={userRole === 'candidate' ? '#fff' : '#6B7280'}
+                />
+                <Text
+                  className={`mt-2 text-sm font-semibold ${
+                    userRole === 'candidate' ? 'text-white' : 'text-gray-700'
+                  }`}
+                >
+                  Postulant
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setUserRole('recruiter')}
+                className={`flex-1 rounded-xl border-2 py-4 items-center ${
+                  userRole === 'recruiter'
+                    ? 'bg-primary-500 border-primary-500'
+                    : 'bg-gray-50 border-gray-200'
+                }`}
+              >
+                <Feather
+                  name="briefcase"
+                  size={24}
+                  color={userRole === 'recruiter' ? '#fff' : '#6B7280'}
+                />
+                <Text
+                  className={`mt-2 text-sm font-semibold ${
+                    userRole === 'recruiter' ? 'text-white' : 'text-gray-700'
+                  }`}
+                >
+                  Recruteur
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+
           {error ? (
             <View className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4">
               <Text className="text-center text-sm text-red-600">{error}</Text>
@@ -193,7 +242,18 @@ export default function SignupScreen() {
           ) : null}
 
           <Pressable
-            className={`mb-6 rounded-xl bg-primary-500 py-4 shadow-lg shadow-primary-500/30 ${loading ? 'opacity-60' : ''}`}
+            style={{
+              marginBottom: 24,
+              borderRadius: 16,
+              backgroundColor: '#3B82F6',
+              paddingVertical: 20,
+              shadowColor: '#3B82F6',
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.4,
+              shadowRadius: 12,
+              elevation: 8,
+              opacity: loading ? 0.6 : 1,
+            }}
             onPress={onSubmit}
             disabled={loading}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -201,7 +261,10 @@ export default function SignupScreen() {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text className="text-center text-base font-semibold text-white">S'inscrire</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                <Feather name="user-plus" size={20} color="#FFFFFF" />
+                <Text style={{ marginLeft: 8, textAlign: 'center', fontSize: 16, fontWeight: 'bold', color: '#fff' }}>S'inscrire</Text>
+              </View>
             )}
           </Pressable>
 

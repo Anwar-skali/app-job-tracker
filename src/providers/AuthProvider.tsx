@@ -2,11 +2,13 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import type { AuthState, Credentials, SignupPayload } from '@/types/auth';
 import type { User } from '@/types';
 import { login as loginService, signup as signupService, logout as logoutService, restoreSession } from '@/services/auth';
+import { getUserById } from '@/services/userService';
 
 interface AuthContextValue extends AuthState {
   login: (credentials: Credentials) => Promise<void>;
   signup: (payload: SignupPayload) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -54,12 +56,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setState({ user: null, tokens: null, status: 'unauthenticated', error: null });
   };
 
+  const refreshUser = async () => {
+    if (!state.user?.id) return;
+    try {
+      const updatedUser = await getUserById(state.user.id);
+      if (updatedUser) {
+        setState((prev) => ({
+          ...prev,
+          user: updatedUser,
+        }));
+      }
+    } catch (error) {
+      console.error('Error refreshing user:', error);
+    }
+  };
+
   const value = useMemo(
     () => ({
       ...state,
       login,
       signup,
       logout,
+      refreshUser,
     }),
     [state],
   );

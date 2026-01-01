@@ -6,6 +6,8 @@ import {
   deleteApplication as dbDeleteApplication,
   searchApplications,
   filterApplications as dbFilterApplications,
+  getApplicationsByRecruiter as dbGetApplicationsByRecruiter,
+  hasUserAppliedToJob as dbHasUserAppliedToJob,
 } from './database';
 import { JobApplication, ApplicationFilters, ApplicationStats, ApplicationStatus } from '@/types/jobApplication';
 
@@ -19,6 +21,16 @@ export const getApplicationById = async (id: string, userId: string): Promise<Jo
   return await dbGetApplicationById(id, userId);
 };
 
+// Récupérer les candidatures reçues par un recruteur
+export const getApplicationsByRecruiter = async (recruiterId: string): Promise<JobApplication[]> => {
+  return await dbGetApplicationsByRecruiter(recruiterId);
+};
+
+// Vérifier si un utilisateur a déjà postulé à une offre
+export const hasUserAppliedToJob = async (userId: string, jobId: string): Promise<boolean> => {
+  return await dbHasUserAppliedToJob(userId, jobId);
+};
+
 // Ajouter une nouvelle candidature
 export const createApplication = async (application: Omit<JobApplication, 'id' | 'createdAt' | 'updatedAt'>): Promise<JobApplication> => {
   return await dbCreateApplication(application);
@@ -28,8 +40,23 @@ export const createApplication = async (application: Omit<JobApplication, 'id' |
 export const updateApplication = async (
   id: string,
   updates: Partial<JobApplication>,
-  userId: string
+  userId: string,
+  changedBy?: string // Pour l'historique (userId ou recruiterId)
 ): Promise<JobApplication | null> => {
+  // Si le statut change, enregistrer dans l'historique
+  if (updates.status) {
+    const { addApplicationHistory } = await import('./applicationHistory');
+    const existing = await dbGetApplicationById(id, userId);
+    if (existing && existing.status !== updates.status) {
+      await addApplicationHistory(
+        id,
+        existing.status,
+        updates.status,
+        changedBy || userId
+      );
+    }
+  }
+  
   return await dbUpdateApplication(id, updates, userId);
 };
 
