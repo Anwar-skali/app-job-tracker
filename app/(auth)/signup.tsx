@@ -21,7 +21,6 @@ export default function SignupScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [userRole, setUserRole] = useState<'recruiter' | 'candidate'>('candidate');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -30,46 +29,46 @@ export default function SignupScreen() {
   const onSubmit = async () => {
     console.log('Signup button clicked');
     setError(null);
-    
+
     if (!name.trim()) {
       setError('Veuillez entrer votre nom');
       return;
     }
-    
+
     if (name.trim().length < 2) {
       setError('Le nom doit contenir au moins 2 caractères');
       return;
     }
-    
+
     if (!email.trim()) {
       setError('Veuillez entrer votre email');
       return;
     }
-    
+
     if (!validateEmail(email)) {
       setError('Email invalide');
       return;
     }
-    
+
     if (!password) {
       setError('Veuillez entrer un mot de passe');
       return;
     }
-    
+
     if (password.length < 6) {
       setError('Le mot de passe doit contenir au moins 6 caractères');
       return;
     }
-    
+
     if (password !== confirmPassword) {
       setError('Les mots de passe ne correspondent pas');
       return;
     }
-    
+
     try {
       setLoading(true);
       console.log('Calling signup service...');
-      await signup({ name: name.trim(), email: email.trim(), password, role: userRole });
+      await signup({ name: name.trim(), email: email.trim(), password });
       console.log('Signup successful, redirecting...');
       router.replace('/(tabs)');
     } catch (e) {
@@ -82,32 +81,32 @@ export default function SignupScreen() {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-white"
+      className="flex-1 bg-background-light dark:bg-background-dark"
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
         contentContainerClassName="flex-grow justify-center px-6 py-12"
         keyboardShouldPersistTaps="handled"
       >
-        <View className="mb-10 items-center">
-          <View className="mb-4 h-16 w-16 items-center justify-center rounded-2xl bg-primary-100">
-            <Feather name="user-plus" size={32} color="#2563EB" />
+        <View className="mb-8 items-center">
+          <View className="mb-6 h-20 w-20 items-center justify-center rounded-3xl bg-primary-50 shadow-sm shadow-primary-100">
+            <Feather name="user-plus" size={36} color="#4F46E5" />
           </View>
-          <Text className="mb-2 text-3xl font-bold text-gray-900">Inscription</Text>
-          <Text className="text-center text-base text-gray-600">
-            Créez votre compte pour commencer à suivre vos candidatures
+          <Text className="mb-3 text-3xl font-bold text-gray-900 dark:text-white">Inscription</Text>
+          <Text className="text-center text-lg text-secondary-500">
+            Rejoignez-nous dès maintenant
           </Text>
         </View>
 
         <View className="w-full">
           <View className="mb-5">
-            <Text className="mb-2 text-sm font-semibold text-gray-700">Nom complet</Text>
-            <View className={`rounded-xl border-2 bg-gray-50 ${error && !name ? 'border-red-500' : 'border-gray-200'}`}>
+            <Text className="mb-2 text-sm font-semibold text-secondary-700 dark:text-secondary-300">Nom complet</Text>
+            <View className={`rounded-2xl border-2 bg-surface-light dark:bg-surface-dark ${error && !name ? 'border-red-500' : 'border-secondary-100 focus:border-primary-500'}`}>
               <TextInput
                 placeholder="Jean Dupont"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#94A3B8"
                 autoCapitalize="words"
-                className="px-4 py-4 text-base text-gray-900"
+                className="px-5 py-4 text-base text-gray-900 dark:text-white"
                 value={name}
                 onChangeText={(text) => {
                   setName(text);
@@ -119,15 +118,15 @@ export default function SignupScreen() {
           </View>
 
           <View className="mb-5">
-            <Text className="mb-2 text-sm font-semibold text-gray-700">Email</Text>
-            <View className={`rounded-xl border-2 bg-gray-50 ${error && !email ? 'border-red-500' : 'border-gray-200'}`}>
+            <Text className="mb-2 text-sm font-semibold text-secondary-700 dark:text-secondary-300">Email</Text>
+            <View className={`rounded-2xl border-2 bg-surface-light dark:bg-surface-dark ${error && !email ? 'border-red-500' : 'border-secondary-100 focus:border-primary-500'}`}>
               <TextInput
                 placeholder="exemple@email.com"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#94A3B8"
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="email-address"
-                className="px-4 py-4 text-base text-gray-900"
+                className="px-5 py-4 text-base text-gray-900 dark:text-white"
                 value={email}
                 onChangeText={(text) => {
                   setEmail(text);
@@ -139,13 +138,13 @@ export default function SignupScreen() {
           </View>
 
           <View className="mb-5">
-            <Text className="mb-2 text-sm font-semibold text-gray-700">Mot de passe</Text>
-            <View className={`relative rounded-xl border-2 bg-gray-50 ${error && !password ? 'border-red-500' : 'border-gray-200'}`}>
+            <Text className="mb-2 text-sm font-semibold text-secondary-700 dark:text-secondary-300">Mot de passe</Text>
+            <View className={`relative rounded-2xl border-2 bg-surface-light dark:bg-surface-dark ${error && !password ? 'border-red-500' : 'border-secondary-100 focus:border-primary-500'}`}>
               <TextInput
                 placeholder="••••••••"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#94A3B8"
                 secureTextEntry={!showPassword}
-                className="px-4 py-4 pr-12 text-base text-gray-900"
+                className="px-5 py-4 pr-12 text-base text-gray-900 dark:text-white"
                 value={password}
                 onChangeText={(text) => {
                   setPassword(text);
@@ -154,23 +153,23 @@ export default function SignupScreen() {
                 editable={!loading}
               />
               <Pressable
-                className="absolute right-3 top-4 p-1"
+                className="absolute right-4 top-4 p-1"
                 onPress={() => setShowPassword(!showPassword)}
               >
-                <Feather name={showPassword ? 'eye' : 'eye-off'} size={20} color="#6B7280" />
+                <Feather name={showPassword ? 'eye' : 'eye-off'} size={20} color="#64748B" />
               </Pressable>
             </View>
-            <Text className="mt-1 text-xs text-gray-500">Minimum 6 caractères</Text>
+            <Text className="mt-1.5 text-xs font-medium text-secondary-400">Minimum 6 caractères</Text>
           </View>
 
-          <View className="mb-5">
-            <Text className="mb-2 text-sm font-semibold text-gray-700">Confirmer le mot de passe</Text>
-            <View className={`relative rounded-xl border-2 bg-gray-50 ${error && !confirmPassword ? 'border-red-500' : 'border-gray-200'}`}>
+          <View className="mb-8">
+            <Text className="mb-2 text-sm font-semibold text-secondary-700 dark:text-secondary-300">Confirmer le mot de passe</Text>
+            <View className={`relative rounded-2xl border-2 bg-surface-light dark:bg-surface-dark ${error && !confirmPassword ? 'border-red-500' : 'border-secondary-100 focus:border-primary-500'}`}>
               <TextInput
                 placeholder="••••••••"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#94A3B8"
                 secureTextEntry={!showConfirmPassword}
-                className="px-4 py-4 pr-12 text-base text-gray-900"
+                className="px-5 py-4 pr-12 text-base text-gray-900 dark:text-white"
                 value={confirmPassword}
                 onChangeText={(text) => {
                   setConfirmPassword(text);
@@ -179,81 +178,22 @@ export default function SignupScreen() {
                 editable={!loading}
               />
               <Pressable
-                className="absolute right-3 top-4 p-1"
+                className="absolute right-4 top-4 p-1"
                 onPress={() => setShowConfirmPassword(!showConfirmPassword)}
               >
-                <Feather name={showConfirmPassword ? 'eye' : 'eye-off'} size={20} color="#6B7280" />
-              </Pressable>
-            </View>
-          </View>
-
-          <View className="mb-5">
-            <Text className="mb-2 text-sm font-semibold text-gray-700">Je suis</Text>
-            <View className="flex-row gap-3">
-              <Pressable
-                onPress={() => setUserRole('candidate')}
-                className={`flex-1 rounded-xl border-2 py-4 items-center ${
-                  userRole === 'candidate'
-                    ? 'bg-primary-500 border-primary-500'
-                    : 'bg-gray-50 border-gray-200'
-                }`}
-              >
-                <Feather
-                  name="user"
-                  size={24}
-                  color={userRole === 'candidate' ? '#fff' : '#6B7280'}
-                />
-                <Text
-                  className={`mt-2 text-sm font-semibold ${
-                    userRole === 'candidate' ? 'text-white' : 'text-gray-700'
-                  }`}
-                >
-                  Postulant
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setUserRole('recruiter')}
-                className={`flex-1 rounded-xl border-2 py-4 items-center ${
-                  userRole === 'recruiter'
-                    ? 'bg-primary-500 border-primary-500'
-                    : 'bg-gray-50 border-gray-200'
-                }`}
-              >
-                <Feather
-                  name="briefcase"
-                  size={24}
-                  color={userRole === 'recruiter' ? '#fff' : '#6B7280'}
-                />
-                <Text
-                  className={`mt-2 text-sm font-semibold ${
-                    userRole === 'recruiter' ? 'text-white' : 'text-gray-700'
-                  }`}
-                >
-                  Recruteur
-                </Text>
+                <Feather name={showConfirmPassword ? 'eye' : 'eye-off'} size={20} color="#64748B" />
               </Pressable>
             </View>
           </View>
 
           {error ? (
-            <View className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4">
-              <Text className="text-center text-sm text-red-600">{error}</Text>
+            <View className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4">
+              <Text className="text-center text-sm font-medium text-red-600">{error}</Text>
             </View>
           ) : null}
 
           <Pressable
-            style={{
-              marginBottom: 24,
-              borderRadius: 16,
-              backgroundColor: '#3B82F6',
-              paddingVertical: 20,
-              shadowColor: '#3B82F6',
-              shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: 0.4,
-              shadowRadius: 12,
-              elevation: 8,
-              opacity: loading ? 0.6 : 1,
-            }}
+            className={`mb-8 rounded-2xl bg-primary-600 py-5 shadow-lg shadow-primary-500/40 active:bg-primary-700 ${loading ? 'opacity-70' : ''}`}
             onPress={onSubmit}
             disabled={loading}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -261,18 +201,15 @@ export default function SignupScreen() {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-                <Feather name="user-plus" size={20} color="#FFFFFF" />
-                <Text style={{ marginLeft: 8, textAlign: 'center', fontSize: 16, fontWeight: 'bold', color: '#fff' }}>S'inscrire</Text>
-              </View>
+              <Text className="text-center text-lg font-bold text-white">S'inscrire</Text>
             )}
           </Pressable>
 
           <View className="flex-row justify-center items-center">
-            <Text className="text-sm text-gray-600">Déjà un compte ? </Text>
+            <Text className="text-base text-secondary-600">Déjà un compte ? </Text>
             <Link href="/(auth)/login" asChild>
               <Pressable>
-                <Text className="text-sm font-semibold text-primary-500">Se connecter</Text>
+                <Text className="text-base font-bold text-primary-600">Se connecter</Text>
               </Pressable>
             </Link>
           </View>
