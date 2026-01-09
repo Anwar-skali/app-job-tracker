@@ -1,25 +1,7 @@
 import { Platform } from 'react-native';
 import { User, UserRole } from '@/types';
 
-// Utiliser SQLite sur mobile, AsyncStorage sur web
-let db: any = null;
-let SQLite: any = null;
-
-// Charger SQLite uniquement sur mobile
-if (Platform.OS !== 'web') {
-  SQLite = require('expo-sqlite');
-}
-
-const getDatabase = () => {
-  if (Platform.OS === 'web') {
-    // Pour web, on utilisera AsyncStorage via database.web
-    return null;
-  }
-  if (!db) {
-    throw new Error('Database not initialized. Call initDatabase() first.');
-  }
-  return db;
-};
+import { getDatabase } from './database';
 
 // Créer un utilisateur
 export const createUser = async (userData: {
@@ -42,10 +24,10 @@ export const createUser = async (userData: {
       `INSERT INTO users (id, name, email, password, role, phone, address, skills, experience, education, linkedinUrl, companyName, companySector, companyWebsite, companySize, createdAt, updatedAt)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        userData.id, 
-        userData.name, 
-        userData.email, 
-        userData.password, 
+        userData.id,
+        userData.name,
+        userData.email,
+        userData.password,
         userData.role,
         userData.phone || null,
         userData.address || null,
@@ -57,7 +39,7 @@ export const createUser = async (userData: {
         userData.companySector || null,
         userData.companyWebsite || null,
         userData.companySize || null,
-        now, 
+        now,
         now
       ]
     );
@@ -117,7 +99,7 @@ export const getUserById = async (id: string): Promise<User | null> => {
       [id]
     );
     if (!result) return null;
-    
+
     return {
       id: result.id,
       name: result.name,
@@ -140,19 +122,31 @@ export const getUserById = async (id: string): Promise<User | null> => {
   }
 };
 
-export const updateUser = async (id: string, updates: Partial<User>): Promise<User | null> => {
+// Simple password hash (same as in auth.ts)
+const hashPassword = (password: string): string => {
+  let hash = 0;
+  for (let i = 0; i < password.length; i++) {
+    const char = password.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return hash.toString();
+};
+
+export const updateUser = async (id: string, updates: Partial<User & { password?: string }>): Promise<User | null> => {
   if (Platform.OS === 'web') {
     const webDb = await import('./database.web');
+    // @ts-ignore - web implementation might need update ensuring it handles password
     return await webDb.updateUser(id, updates);
   }
 
   const database = getDatabase();
   const now = new Date().toISOString();
-  
+
   try {
     const setClause: string[] = [];
     const values: any[] = [];
-    
+
     if (updates.name !== undefined) {
       setClause.push('name = ?');
       values.push(updates.name);
@@ -160,6 +154,10 @@ export const updateUser = async (id: string, updates: Partial<User>): Promise<Us
     if (updates.email !== undefined) {
       setClause.push('email = ?');
       values.push(updates.email);
+    }
+    if (updates.password !== undefined) {
+      setClause.push('password = ?');
+      values.push(hashPassword(updates.password));
     }
     if (updates.phone !== undefined) {
       setClause.push('phone = ?');
@@ -201,20 +199,51 @@ export const updateUser = async (id: string, updates: Partial<User>): Promise<Us
       setClause.push('companySize = ?');
       values.push(updates.companySize || null);
     }
-    
+
     setClause.push('updatedAt = ?');
     values.push(now);
     values.push(id);
-    
+
     await database.runAsync(
       `UPDATE users SET ${setClause.join(', ')} WHERE id = ?`,
       values
     );
-    
+
     return await getUserById(id);
   } catch (error) {
     console.error('Error updating user:', error);
     throw error;
   }
+};
+
+// Récupérer tous les utilisateurs (Admin)
+export const getAllUsers = async (): Promise<User[]> => {
+  if (Platform.OS === 'web') {
+    const webDb = await import('./database.web');
+    return await webDb.getAllUsers();
+  }
+
+  const { getAllUsers: dbGetAllUsers } = await import('./database');
+  return await dbGetAllUsers();
+};
+
+export const updateUserRole = async (userId: string, newRole: UserRole): Promise<boolean> => {
+  if (Platform.OS === 'web') {
+    const webDb = await import('./database.web');
+    return await webDb.updateUserRole(userId, newRole);
+  }
+
+  const { updateUserRole: dbUpdateUserRole } = await import('./database');
+  return await dbUpdateUserRole(userId, newRole);
+};
+
+export const deleteUser = async (userId: string): Promise<boolean> => {
+  if (Platform.OS === 'web') {
+    const webDb = await import('./database.web');
+    return await webDb.deleteUser(userId);
+  }
+
+  const { deleteUser: dbDeleteUser } = await import('./database');
+  return await dbDeleteUser(userId);
 };
 

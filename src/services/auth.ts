@@ -23,7 +23,7 @@ const hashPassword = (password: string): string => {
 
 export const login = async (credentials: Credentials): Promise<{ user: User; tokens: AuthTokens }> => {
   const userData = await getUserByEmail(credentials.email);
-  
+
   if (!userData) {
     throw new Error('Email ou mot de passe incorrect');
   }
@@ -36,7 +36,7 @@ export const login = async (credentials: Credentials): Promise<{ user: User; tok
 
   const tokens = createTokens(credentials.email);
   await saveToken(tokens.accessToken);
-  
+
   const user: User = {
     id: userData.id,
     name: userData.name,
@@ -56,18 +56,18 @@ export const signup = async (payload: SignupPayload): Promise<{ user: User; toke
 
   const userId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
   const hashedPassword = hashPassword(payload.password);
-  
+
   const user = await createUser({
     id: userId,
     name: payload.name,
     email: payload.email,
     password: hashedPassword,
-    role: payload.role === 'recruiter' ? UserRole.RECRUITER : UserRole.CANDIDATE,
+    role: payload.role === 'admin' ? UserRole.ADMIN : payload.role === 'recruiter' ? UserRole.RECRUITER : UserRole.CANDIDATE,
   });
 
   const tokens = createTokens(payload.email);
   await saveToken(tokens.accessToken);
-  
+
   return { user, tokens };
 };
 
@@ -78,16 +78,16 @@ export const logout = async () => {
 export const restoreSession = async (): Promise<User | null> => {
   const token = await getToken();
   if (!token) return null;
-  
+
   // Extraire l'email du token (format: access-email-timestamp)
   const parts = token.split('-');
   if (parts.length < 3) return null;
-  
+
   const email = parts[1];
   const userData = await getUserByEmail(email);
-  
+
   if (!userData) return null;
-  
+
   return {
     id: userData.id,
     name: userData.name,

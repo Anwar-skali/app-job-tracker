@@ -19,6 +19,6 @@ export interface Credentials {
 
 export interface SignupPayload extends Credentials {
   name: string;
-  role: 'recruiter' | 'candidate';
+  role: 'recruiter' | 'candidate' | 'admin';
 }
 

@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { JobApplication } from '@/types/jobApplication';
+import { User, UserRole } from '@/types';
 
 // Utiliser SQLite sur mobile, AsyncStorage sur web
 let db: any = null;
@@ -15,7 +16,7 @@ export const initDatabase = async (): Promise<void> => {
     if (db) {
       return; // Déjà initialisée
     }
-    
+
     // Sur web, utiliser AsyncStorage
     if (Platform.OS === 'web') {
       const webDb = await import('./database.web');
@@ -24,14 +25,14 @@ export const initDatabase = async (): Promise<void> => {
       console.log('Database initialized (web/AsyncStorage)');
       return;
     }
-    
+
     // Sur mobile, utiliser SQLite
     if (!SQLite) {
       throw new Error('SQLite not available');
     }
-    
+
     db = await SQLite.openDatabaseAsync('jobtracker.db');
-    
+
     await db.execAsync(`
       CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY NOT NULL,
@@ -124,7 +125,7 @@ export const initDatabase = async (): Promise<void> => {
       CREATE INDEX IF NOT EXISTS idx_userEmail ON users(email);
       CREATE INDEX IF NOT EXISTS idx_jobRecruiterId ON jobs(recruiterId);
     `);
-    
+
     console.log('Database initialized successfully (SQLite)');
   } catch (error) {
     console.error('Error initializing database:', error);
@@ -146,7 +147,7 @@ export const getAllApplications = async (userId: string): Promise<JobApplication
     const webDb = await import('./database.web');
     return await webDb.getAllApplications(userId);
   }
-  
+
   const database = getDatabase();
   try {
     const result = await database.getAllAsync<any>(
@@ -171,7 +172,7 @@ export const getApplicationById = async (id: string, userId: string): Promise<Jo
     const webDb = await import('./database.web');
     return await webDb.getApplicationById(id, userId);
   }
-  
+
   const database = getDatabase();
   try {
     const result = await database.getFirstAsync<any>(
@@ -198,7 +199,7 @@ export const hasUserAppliedToJob = async (userId: string, jobId: string): Promis
     const webDb = await import('./database.web');
     return await webDb.hasUserAppliedToJob(userId, jobId);
   }
-  
+
   const database = getDatabase();
   try {
     const result = await database.getFirstAsync<{ count: number }>(
@@ -226,11 +227,11 @@ export const createApplication = async (application: Omit<JobApplication, 'id' |
     const webDb = await import('./database.web');
     return await webDb.createApplication(application);
   }
-  
+
   const database = getDatabase();
   const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
   const now = new Date().toISOString();
-  
+
   const newApplication: JobApplication = {
     ...application,
     id,
@@ -284,9 +285,9 @@ export const updateApplication = async (
     const webDb = await import('./database.web');
     return await webDb.updateApplication(id, updates, userId);
   }
-  
+
   const database = getDatabase();
-  
+
   try {
     const existing = await getApplicationById(id, userId);
     if (!existing) return null;
@@ -335,7 +336,7 @@ export const deleteApplication = async (id: string, userId: string): Promise<boo
     const webDb = await import('./database.web');
     return await webDb.deleteApplication(id, userId);
   }
-  
+
   const database = getDatabase();
   try {
     const result = await database.runAsync(
@@ -358,7 +359,7 @@ export const searchApplications = async (
     const webDb = await import('./database.web');
     return await webDb.searchApplications(userId, query);
   }
-  
+
   const database = getDatabase();
   try {
     const result = await database.getAllAsync<JobApplication>(
@@ -440,9 +441,9 @@ export const filterApplications = async (
     const webDb = await import('./database.web');
     return await webDb.filterApplications(userId, filters);
   }
-  
+
   const database = getDatabase();
-  
+
   try {
     let query = 'SELECT * FROM applications WHERE userId = ?';
     const params: any[] = [userId];
@@ -477,6 +478,70 @@ export const filterApplications = async (
   } catch (error) {
     console.error('Error filtering applications:', error);
     return [];
+  }
+};
+
+// Récupérer tous les utilisateurs (Admin)
+export const getAllUsers = async (): Promise<User[]> => {
+  // Sur web, utiliser AsyncStorage
+  if (Platform.OS === 'web') {
+    const webDb = await import('./database.web');
+    return await webDb.getAllUsers();
+  }
+
+  const database = getDatabase();
+  try {
+    const result = await database.getAllAsync<any>(
+      'SELECT id, name, email, role, createdAt, updatedAt FROM users ORDER BY createdAt DESC'
+    );
+    return result.map(u => ({
+      ...u,
+      role: u.role as UserRole
+    }));
+  } catch (error) {
+    console.error('Error getting all users:', error);
+    return [];
+  }
+};
+
+export const updateUserRole = async (userId: string, newRole: UserRole): Promise<boolean> => {
+  // Sur web, utiliser AsyncStorage
+  if (Platform.OS === 'web') {
+    const webDb = await import('./database.web');
+    return await webDb.updateUserRole(userId, newRole);
+  }
+
+  const database = getDatabase();
+  try {
+    const now = new Date().toISOString();
+    await database.runAsync(
+      'UPDATE users SET role = ?, updatedAt = ? WHERE id = ?',
+      [newRole, now, userId]
+    );
+    return true;
+  } catch (error) {
+    console.error('Error updating user role:', error);
+    return false;
+  }
+};
+
+export const deleteUser = async (userId: string): Promise<boolean> => {
+  // Sur web, utiliser AsyncStorage
+  if (Platform.OS === 'web') {
+    const webDb = await import('./database.web');
+    return await webDb.deleteUser(userId);
+  }
+
+  const database = getDatabase();
+  try {
+    const result = await database.runAsync(
+      'DELETE FROM users WHERE id = ?',
+      [userId]
+    );
+    return result.changes > 0;
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    return false;
   }
 };
 

@@ -48,8 +48,12 @@ export default function LoginScreen() {
 
     try {
       setLoading(true);
-      await login({ email, password });
-      router.replace('/(tabs)');
+      const { user } = await login({ email, password });
+      if (user.role === 'admin') {
+        router.replace('/(admin)');
+      } else {
+        router.replace('/(tabs)');
+      }
     } catch (e) {
       setError((e as Error).message || 'Erreur de connexion. Vérifiez vos identifiants.');
     } finally {

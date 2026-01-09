@@ -9,6 +9,8 @@ interface AuthContextValue extends AuthState {
   signup: (payload: SignupPayload) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  updateProfile: (updates: Partial<User & { password?: string }>) => Promise<void>;
+  deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -71,6 +73,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const updateProfile = async (updates: Partial<User & { password?: string }>) => {
+    if (!state.user?.id) return;
+    setState((prev) => ({ ...prev, error: null }));
+    try {
+      const { updateUser } = await import('@/services/userService');
+      const updatedUser = await updateUser(state.user.id, updates);
+      if (updatedUser) {
+        setState((prev) => ({
+          ...prev,
+          user: updatedUser,
+        }));
+      }
+    } catch (error) {
+      setState((prev) => ({ ...prev, error: (error as Error).message }));
+      throw error;
+    }
+  };
+
+  const deleteAccount = async () => {
+    if (!state.user?.id) return;
+    try {
+      const { deleteUser } = await import('@/services/userService');
+      await deleteUser(state.user.id);
+      await logout();
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      throw error;
+    }
+  };
+
   const value = useMemo(
     () => ({
       ...state,
@@ -78,6 +110,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       signup,
       logout,
       refreshUser,
+      updateProfile,
+      deleteAccount,
     }),
     [state],
   );

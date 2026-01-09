@@ -111,30 +111,47 @@ export const createApplication = async (application: Omit<JobApplication, 'id' |
   }
 };
 
-export const updateApplication = async (
+// Simple password hash (same as in auth.ts)
+const hashPassword = (password: string): string => {
+  let hash = 0;
+  for (let i = 0; i < password.length; i++) {
+    const char = password.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return hash.toString();
+};
+
+export const updateUser = async (
   id: string,
-  updates: Partial<JobApplication>,
-  userId: string
-): Promise<JobApplication | null> => {
+  updates: Partial<User & { password?: string }>,
+  userId?: string // Unused in web implementation but kept for signature compatibility if needed
+): Promise<User | null> => {
   try {
-    const data = await AsyncStorage.getItem(STORAGE_KEY);
+    const data = await AsyncStorage.getItem(USERS_STORAGE_KEY);
     if (!data) return null;
 
-    const allApplications: JobApplication[] = JSON.parse(data);
-    const index = allApplications.findIndex(app => app.id === id && app.userId === userId);
-
+    const users: (User & { password: string })[] = JSON.parse(data);
+    const index = users.findIndex(u => u.id === id);
     if (index === -1) return null;
 
-    allApplications[index] = {
-      ...allApplications[index],
+    const updatedUser = {
+      ...users[index],
       ...updates,
-      updatedAt: new Date().toISOString(),
     };
 
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(allApplications));
-    return allApplications[index];
+    // Hash password if it's being updated
+    if (updates.password) {
+      updatedUser.password = hashPassword(updates.password);
+    }
+
+    users[index] = updatedUser;
+
+    await AsyncStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+    const { password, ...userWithoutPassword } = users[index];
+    return userWithoutPassword;
   } catch (error) {
-    console.error('Error updating application:', error);
+    console.error('Error updating user:', error);
     throw error;
   }
 };
@@ -292,43 +309,7 @@ export const getUserById = async (id: string): Promise<User | null> => {
   }
 };
 
-export const updateUser = async (id: string, updates: Partial<User>): Promise<User | null> => {
-  try {
-    const data = await AsyncStorage.getItem(USERS_STORAGE_KEY);
-    if (!data) return null;
 
-    const users: (User & { password: string })[] = JSON.parse(data);
-    const index = users.findIndex(u => u.id === id);
-    if (index === -1) return null;
-
-    users[index] = {
-      ...users[index],
-      ...updates,
-    };
-
-    await AsyncStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-    const updated = users[index];
-    return {
-      id: updated.id,
-      name: updated.name,
-      email: updated.email,
-      role: updated.role,
-      phone: updated.phone,
-      address: updated.address,
-      skills: updated.skills,
-      experience: updated.experience,
-      education: updated.education,
-      linkedinUrl: updated.linkedinUrl,
-      companyName: updated.companyName,
-      companySector: updated.companySector,
-      companyWebsite: updated.companyWebsite,
-      companySize: updated.companySize,
-    };
-  } catch (error) {
-    console.error('Error updating user:', error);
-    throw error;
-  }
-};
 
 // Job management functions
 export const createJob = async (job: Omit<Job, 'id' | 'createdAt' | 'updatedAt'>): Promise<Job> => {
@@ -485,12 +466,12 @@ export const updateUserRole = async (userId: string, newRole: UserRole): Promise
 
     const users: (User & { password?: string })[] = JSON.parse(data);
     const index = users.findIndex(u => u.id === userId);
-    
+
     if (index === -1) return false;
 
     users[index].role = newRole;
     users[index].updatedAt = new Date().toISOString();
-    
+
     await AsyncStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
     return true;
   } catch (error) {
@@ -540,7 +521,7 @@ export const toggleJobArchive = async (id: string, recruiterId: string, archived
 
     const jobs: Job[] = JSON.parse(data);
     const index = jobs.findIndex(job => job.id === id && job.recruiterId === recruiterId);
-    
+
     if (index === -1) return false;
 
     jobs[index] = {
