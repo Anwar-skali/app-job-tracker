@@ -1,0 +1,59 @@
+import { db } from '@/config/firebaseConfig';
+import {
+  collection,
+  doc,
+  getDocs,
+  setDoc,
+  query,
+  where,
+  orderBy
+} from 'firebase/firestore';
+import { ApplicationHistory, ApplicationStatus } from '@/types/jobApplication';
+
+const HISTORY_COLLECTION = 'application_history';
+
+// Ajouter une entrée dans l'historique
+export const addApplicationHistory = async (
+  applicationId: string,
+  oldStatus: ApplicationStatus | undefined,
+  newStatus: ApplicationStatus,
+  changedBy: string,
+  notes?: string
+): Promise<void> => {
+  try {
+    const historyRef = collection(db, HISTORY_COLLECTION);
+    const newHistoryRef = doc(historyRef);
+
+    const newHistory: ApplicationHistory = {
+      id: newHistoryRef.id,
+      applicationId,
+      oldStatus,
+      newStatus,
+      changedBy,
+      changedAt: new Date().toISOString(),
+      notes,
+    };
+
+    await setDoc(newHistoryRef, newHistory);
+  } catch (error) {
+    console.error('Error adding application history:', error);
+  }
+};
+
+// Récupérer l'historique d'une candidature
+export const getApplicationHistory = async (applicationId: string): Promise<ApplicationHistory[]> => {
+  try {
+    const historyRef = collection(db, HISTORY_COLLECTION);
+    const q = query(
+      historyRef,
+      where('applicationId', '==', applicationId),
+      orderBy('changedAt', 'desc')
+    );
+
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => doc.data() as ApplicationHistory);
+  } catch (error) {
+    console.error('Error getting application history:', error);
+    return [];
+  }
+};

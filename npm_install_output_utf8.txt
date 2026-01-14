@@ -1,0 +1,51 @@
+﻿node.exe : (node:20120) ExperimentalWarning: CommonJS module C:\Program 
+Files\nodejs\node_modules\npm\node_modules\debug\src\node.js is loading ES Module C:\Program 
+Files\nodejs\node_modules\npm\node_modules\supports-color\index.js using require().
+At C:\Program Files\nodejs\npm.ps1:29 char:3
++   & $NODE_EXE $NPM_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:20120) Ex...sing require().:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Support for loading ES Module in require() is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+npm error code ERESOLVE
+npm error ERESOLVE could not resolve
+npm error
+npm error While resolving: react-native-web@0.19.13
+npm error Found: react@19.1.0
+npm error node_modules/react
+npm error   react@"19.1.0" from the root project
+npm error   peer react@"*" from @expo/metro-runtime@6.1.2
+npm error   node_modules/@expo/metro-runtime
+npm error     @expo/metro-runtime@"^6.1.2" from expo-router@6.0.21
+npm error     node_modules/expo-router
+npm error       expo-router@"~6.0.21" from the root project
+npm error   56 more (@expo/vector-icons, @radix-ui/react-collection, ...)
+npm error
+npm error Could not resolve dependency:
+npm error peer react@"^18.0.0" from react-native-web@0.19.13
+npm error node_modules/react-native-web
+npm error   react-native-web@"~0.19.13" from the root project
+npm error   peerOptional react-native-web@"*" from expo-router@6.0.21
+npm error   node_modules/expo-router
+npm error     expo-router@"~6.0.21" from the root project
+npm error
+npm error Conflicting peer dependency: react@18.3.1
+npm error node_modules/react
+npm error   peer react@"^18.0.0" from react-native-web@0.19.13
+npm error   node_modules/react-native-web
+npm error     react-native-web@"~0.19.13" from the root project
+npm error     peerOptional react-native-web@"*" from expo-router@6.0.21
+npm error     node_modules/expo-router
+npm error       expo-router@"~6.0.21" from the root project
+npm error
+npm error Fix the upstream dependency conflict, or retry
+npm error this command with --force or --legacy-peer-deps
+npm error to accept an incorrect (and potentially broken) dependency resolution.
+npm error
+npm error
+npm error For a full report see:
+npm error C:\Users\anask.ANAS\AppData\Local\npm-cache\_logs\2026-01-14T15_23_24_024Z-eresolve-report.txt
+npm error A complete log of this run can be found in: 
+C:\Users\anask.ANAS\AppData\Local\npm-cache\_logs\2026-01-14T15_23_24_024Z-debug-0.log
