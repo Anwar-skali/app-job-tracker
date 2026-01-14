@@ -1,14 +1,16 @@
-import { Platform } from 'react-native';
+import { db } from '@/config/firebaseConfig';
+import {
+  collection,
+  doc,
+  getDocs,
+  setDoc,
+  query,
+  where,
+  orderBy
+} from 'firebase/firestore';
 import { ApplicationHistory, ApplicationStatus } from '@/types/jobApplication';
 
-// Fonctions pour gérer l'historique des candidatures
-const getDatabase = () => {
-  if (Platform.OS === 'web') {
-    return null;
-  }
-  const dbModule = require('./database');
-  return dbModule.getDatabase();
-};
+const HISTORY_COLLECTION = 'application_history';
 
 // Ajouter une entrée dans l'historique
 export const addApplicationHistory = async (
@@ -18,50 +20,40 @@ export const addApplicationHistory = async (
   changedBy: string,
   notes?: string
 ): Promise<void> => {
-  if (Platform.OS === 'web') {
-    const webDb = await import('./database.web');
-    return await webDb.addApplicationHistory(applicationId, oldStatus, newStatus, changedBy, notes);
-  }
-
-  const database = getDatabase();
   try {
-    const historyId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
-    await database.runAsync(
-      `INSERT INTO application_history (id, applicationId, oldStatus, newStatus, changedBy, changedAt, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [
-        historyId,
-        applicationId,
-        oldStatus || null,
-        newStatus,
-        changedBy,
-        new Date().toISOString(),
-        notes || null,
-      ]
-    );
+    const historyRef = collection(db, HISTORY_COLLECTION);
+    const newHistoryRef = doc(historyRef);
+
+    const newHistory: ApplicationHistory = {
+      id: newHistoryRef.id,
+      applicationId,
+      oldStatus,
+      newStatus,
+      changedBy,
+      changedAt: new Date().toISOString(),
+      notes,
+    };
+
+    await setDoc(newHistoryRef, newHistory);
   } catch (error) {
     console.error('Error adding application history:', error);
-    // Ne pas throw pour ne pas bloquer la mise à jour
   }
 };
 
 // Récupérer l'historique d'une candidature
 export const getApplicationHistory = async (applicationId: string): Promise<ApplicationHistory[]> => {
-  if (Platform.OS === 'web') {
-    const webDb = await import('./database.web');
-    return await webDb.getApplicationHistory(applicationId);
-  }
-
-  const database = getDatabase();
   try {
-    const result = await database.getAllAsync<ApplicationHistory>(
-      'SELECT * FROM application_history WHERE applicationId = ? ORDER BY changedAt DESC',
-      [applicationId]
+    const historyRef = collection(db, HISTORY_COLLECTION);
+    const q = query(
+      historyRef,
+      where('applicationId', '==', applicationId),
+      orderBy('changedAt', 'desc')
     );
-    return result;
+
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => doc.data() as ApplicationHistory);
   } catch (error) {
     console.error('Error getting application history:', error);
     return [];
   }
 };
-

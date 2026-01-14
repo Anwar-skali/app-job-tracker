@@ -1,138 +1,71 @@
-import { Platform } from 'react-native';
-import { Job, JobType } from '@/types/job';
+import { db } from '@/config/firebaseConfig';
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  orderBy,
+  limit
+} from 'firebase/firestore';
+import { Job } from '@/types/job';
 
-const getDatabase = () => {
-  if (Platform.OS === 'web') {
-    return null;
-  }
-  // Utiliser la fonction getDatabase de database.ts
-  const dbModule = require('./database');
-  return dbModule.getDatabase();
-};
+const JOBS_COLLECTION = 'jobs';
 
 // Créer une offre d'emploi
 export const createJob = async (job: Omit<Job, 'id' | 'createdAt' | 'updatedAt'>): Promise<Job> => {
-  if (Platform.OS === 'web') {
-    const webDb = await import('./database.web');
-    return await webDb.createJob(job);
-  }
-
-  const database = getDatabase();
-  const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
   const now = new Date().toISOString();
+  const jobsRef = collection(db, JOBS_COLLECTION);
+  const newJobRef = doc(jobsRef);
 
   const newJob: Job = {
     ...job,
-    id,
+    id: newJobRef.id,
     createdAt: now,
     updatedAt: now,
   };
 
-  try {
-    await database.runAsync(
-      `INSERT INTO jobs (
-        id, title, company, location, type, description, salary, jobUrl,
-        postedDate, source, remote, requirements, recruiterId, archived, createdAt, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        newJob.id,
-        newJob.title,
-        newJob.company,
-        newJob.location,
-        newJob.type,
-        newJob.description || null,
-        newJob.salary || null,
-        newJob.jobUrl || null,
-        newJob.postedDate,
-        newJob.source || null,
-        newJob.remote ? 1 : 0,
-        newJob.requirements ? JSON.stringify(newJob.requirements) : null,
-        newJob.recruiterId || null,
-        newJob.archived ? 1 : 0,
-        newJob.createdAt,
-        newJob.updatedAt,
-      ]
-    );
-    return newJob;
-  } catch (error) {
-    console.error('Error creating job:', error);
-    throw error;
-  }
+  await setDoc(newJobRef, newJob);
+  return newJob;
 };
 
 // Récupérer toutes les offres d'un recruteur
 export const getJobsByRecruiter = async (recruiterId: string): Promise<Job[]> => {
-  if (Platform.OS === 'web') {
-    const webDb = await import('./database.web');
-    return await webDb.getJobsByRecruiter(recruiterId);
-  }
+  const jobsRef = collection(db, JOBS_COLLECTION);
+  const q = query(
+    jobsRef,
+    where('recruiterId', '==', recruiterId),
+    orderBy('postedDate', 'desc')
+  );
 
-  const database = getDatabase();
-  try {
-    const result = await database.getAllAsync<any>(
-      'SELECT * FROM jobs WHERE recruiterId = ? ORDER BY postedDate DESC',
-      [recruiterId]
-    );
-    return result.map(job => ({
-      ...job,
-      remote: job.remote === 1,
-      archived: job.archived === 1,
-      requirements: job.requirements ? JSON.parse(job.requirements) : [],
-    }));
-  } catch (error) {
-    console.error('Error getting jobs by recruiter:', error);
-    return [];
-  }
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => doc.data() as Job);
 };
 
 // Récupérer toutes les offres disponibles (pour les candidats)
 export const getAllJobs = async (): Promise<Job[]> => {
-  if (Platform.OS === 'web') {
-    const webDb = await import('./database.web');
-    return await webDb.getAllJobs();
-  }
+  const jobsRef = collection(db, JOBS_COLLECTION);
+  const q = query(
+    jobsRef,
+    where('archived', '==', false),
+    orderBy('postedDate', 'desc')
+  );
 
-  const database = getDatabase();
-  try {
-    const result = await database.getAllAsync<any>(
-      'SELECT * FROM jobs WHERE archived = 0 OR archived IS NULL ORDER BY postedDate DESC'
-    );
-    return result.map(job => ({
-      ...job,
-      remote: job.remote === 1,
-      archived: job.archived === 1,
-      requirements: job.requirements ? JSON.parse(job.requirements) : [],
-    }));
-  } catch (error) {
-    console.error('Error getting all jobs:', error);
-    return [];
-  }
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => doc.data() as Job);
 };
 
 // Récupérer une offre par ID
 export const getJobById = async (id: string): Promise<Job | null> => {
-  if (Platform.OS === 'web') {
-    const webDb = await import('./database.web');
-    return await webDb.getJobById(id);
-  }
+  const jobRef = doc(db, JOBS_COLLECTION, id);
+  const jobDoc = await getDoc(jobRef);
 
-  const database = getDatabase();
-  try {
-    const result = await database.getFirstAsync<any>(
-      'SELECT * FROM jobs WHERE id = ?',
-      [id]
-    );
-    if (!result) return null;
-    return {
-      ...result,
-      remote: result.remote === 1,
-      archived: result.archived === 1,
-      requirements: result.requirements ? JSON.parse(result.requirements) : [],
-    };
-  } catch (error) {
-    console.error('Error getting job by id:', error);
-    return null;
-  }
+  if (!jobDoc.exists()) return null;
+  return jobDoc.data() as Job;
 };
 
 // Mettre à jour une offre
@@ -141,113 +74,55 @@ export const updateJob = async (
   updates: Partial<Job>,
   recruiterId: string
 ): Promise<Job | null> => {
-  if (Platform.OS === 'web') {
-    const webDb = await import('./database.web');
-    return await webDb.updateJob(id, updates, recruiterId);
+  const jobRef = doc(db, JOBS_COLLECTION, id);
+  const jobDoc = await getDoc(jobRef);
+
+  if (!jobDoc.exists() || jobDoc.data().recruiterId !== recruiterId) {
+    return null;
   }
 
-  const database = getDatabase();
-  try {
-    const existing = await getJobById(id);
-    if (!existing || existing.recruiterId !== recruiterId) return null;
+  const now = new Date().toISOString();
+  await updateDoc(jobRef, {
+    ...updates,
+    updatedAt: now,
+  });
 
-    const updated: Job = {
-      ...existing,
-      ...updates,
-      updatedAt: new Date().toISOString(),
-    };
-
-    await database.runAsync(
-      `UPDATE jobs SET
-        title = ?, company = ?, location = ?, type = ?, description = ?,
-        salary = ?, jobUrl = ?, postedDate = ?, source = ?, remote = ?,
-        requirements = ?, archived = ?, updatedAt = ?
-      WHERE id = ? AND recruiterId = ?`,
-      [
-        updated.title,
-        updated.company,
-        updated.location,
-        updated.type,
-        updated.description || null,
-        updated.salary || null,
-        updated.jobUrl || null,
-        updated.postedDate,
-        updated.source || null,
-        updated.remote ? 1 : 0,
-        updated.requirements ? JSON.stringify(updated.requirements) : null,
-        updated.archived ? 1 : 0,
-        updated.updatedAt,
-        id,
-        recruiterId,
-      ]
-    );
-    return updated;
-  } catch (error) {
-    console.error('Error updating job:', error);
-    throw error;
-  }
+  return await getJobById(id);
 };
 
 // Vérifier si une offre a des candidatures
 export const hasApplications = async (jobId: string): Promise<boolean> => {
-  if (Platform.OS === 'web') {
-    const webDb = await import('./database.web');
-    return await webDb.hasApplications(jobId);
-  }
-
-  const database = getDatabase();
-  try {
-    const result = await database.getFirstAsync<{ count: number }>(
-      'SELECT COUNT(*) as count FROM applications WHERE jobId = ?',
-      [jobId]
-    );
-    return (result?.count || 0) > 0;
-  } catch (error) {
-    console.error('Error checking applications:', error);
-    return false;
-  }
+  const appsRef = collection(db, 'applications');
+  const q = query(appsRef, where('jobId', '==', jobId), limit(1));
+  const querySnapshot = await getDocs(q);
+  return !querySnapshot.empty;
 };
 
 // Archiver/Désarchiver une offre
 export const toggleJobArchive = async (id: string, recruiterId: string, archived: boolean): Promise<boolean> => {
-  if (Platform.OS === 'web') {
-    const webDb = await import('./database.web');
-    return await webDb.toggleJobArchive(id, recruiterId, archived);
+  const jobRef = doc(db, JOBS_COLLECTION, id);
+  const jobDoc = await getDoc(jobRef);
+
+  if (!jobDoc.exists() || jobDoc.data().recruiterId !== recruiterId) {
+    return false;
   }
 
-  const database = getDatabase();
-  try {
-    const existing = await getJobById(id);
-    if (!existing || existing.recruiterId !== recruiterId) return false;
-
-    await database.runAsync(
-      'UPDATE jobs SET archived = ?, updatedAt = ? WHERE id = ? AND recruiterId = ?',
-      [archived ? 1 : 0, new Date().toISOString(), id, recruiterId]
-    );
-    return true;
-  } catch (error) {
-    console.error('Error toggling job archive:', error);
-    throw error;
-  }
+  await updateDoc(jobRef, {
+    archived,
+    updatedAt: new Date().toISOString(),
+  });
+  return true;
 };
 
 // Supprimer une offre
 export const deleteJob = async (id: string, recruiterId: string): Promise<boolean> => {
-  if (Platform.OS === 'web') {
-    const webDb = await import('./database.web');
-    return await webDb.deleteJob(id, recruiterId);
+  const jobRef = doc(db, JOBS_COLLECTION, id);
+  const jobDoc = await getDoc(jobRef);
+
+  if (!jobDoc.exists() || jobDoc.data().recruiterId !== recruiterId) {
+    return false;
   }
 
-  const database = getDatabase();
-  try {
-    const result = await database.runAsync(
-      'DELETE FROM jobs WHERE id = ? AND recruiterId = ?',
-      [id, recruiterId]
-    );
-    return result.changes > 0;
-  } catch (error) {
-    console.error('Error deleting job:', error);
-    throw error;
-  }
+  await deleteDoc(jobRef);
+  return true;
 };
-

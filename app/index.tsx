@@ -1,24 +1,25 @@
-import { Redirect } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { View, ActivityIndicator } from 'react-native';
+import { useEffect } from 'react';
 
 export default function Index() {
   const { status } = useAuth();
+  const router = useRouter();
 
-  // Attendre que l'auth soit déterminée
-  if (status === 'loading') {
-    return (
-      <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator size="large" color="#2563EB" />
-      </View>
-    );
-  }
+  useEffect(() => {
+    if (status === 'authenticated') {
+      router.replace('/(tabs)');
+    } else if (status === 'unauthenticated') {
+      router.replace('/(auth)/login');
+    }
+  }, [status, router]);
 
-  // Rediriger selon le statut d'authentification
-  if (status === 'authenticated') {
-    return <Redirect href="/(tabs)" />;
-  }
-
-  return <Redirect href="/(auth)/login" />;
+  return (
+    <View className="flex-1 items-center justify-center bg-white">
+      <ActivityIndicator size="large" color="#2563EB" />
+    </View>
+  );
 }
+
 

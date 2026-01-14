@@ -1,321 +1,297 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Linking, Share, Alert } from 'react-native';
-import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
-import { getJobById as getMockJobById } from '@/services/job';
-import { getJobById, deleteJob, hasApplications } from '@/services/jobService';
-import { Job, JobType } from '@/types/job';
-import { Colors } from '@/constants/colors';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '@/hooks/useAuth';
-import { usePermissions } from '@/hooks/usePermissions';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Job, Application } from '../../src/types';
+import { ApplicationForm, ApplicationSuccessScreen } from '../../src/components';
+import { Colors } from '../../src/constants';
+
+const mockJob: Job = {
+  id: '1',
+  title: 'Senior Software Engineer',
+  company: 'Tech Corp',
+  location: 'San Francisco, CA',
+  type: 'full-time',
+  salary: '$120,000 - $150,000',
+  description:
+    'We are looking for an experienced Senior Software Engineer to join our dynamic team. You will be responsible for designing and developing scalable web applications, collaborating with cross-functional teams, and mentoring junior developers.',
+  requirements: [
+    '5+ years of experience in software development',
+    'Proficiency in React, TypeScript, and Node.js',
+    'Experience with cloud platforms (AWS, Azure, or GCP)',
+    'Strong problem-solving and communication skills',
+    'Bachelor\'s degree in Computer Science or related field',
+  ],
+  benefits: [
+    'Health, dental, and vision insurance',
+    '401(k) matching',
+    'Flexible work hours',
+    'Remote work options',
+    'Professional development budget',
+  ],
+  postedDate: '2024-01-15',
+  applicationDeadline: '2024-02-15',
+  remote: true,
+};
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const { user } = useAuth();
-  const { isRecruiter } = usePermissions();
-  const [job, setJob] = useState<Job | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [showApplicationForm, setShowApplicationForm] = useState(false);
+  const [submittedApplication, setSubmittedApplication] = useState<Application | null>(null);
+  const [isLoading] = useState(false);
 
-  useEffect(() => {
-    loadJob();
-  }, [id]);
+  const job = mockJob;
 
-  const loadJob = async () => {
-    if (!id) return;
-    try {
-      setLoading(true);
-      // Essayer d'abord de récupérer depuis la base de données (offres créées par recruteurs)
-      let data = await getJobById(id);
-      
-      // Si pas trouvé, essayer les offres mockées
-      if (!data) {
-        try {
-          data = await getMockJobById(id);
-        } catch (e) {
-          // Ignorer l'erreur si l'offre n'existe pas dans les mockées non plus
-        }
-      }
-      
-      setJob(data);
-    } catch (error) {
-      console.error('Error loading job:', error);
-      Alert.alert('Erreur', 'Impossible de charger les détails de l\'offre');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleApply = () => {
-    if (!job) return;
-    
-    // Navigate to application form with pre-filled data
-    router.push({
-      pathname: '/application/new',
-      params: {
-        jobId: job.id,
-        title: job.title,
-        company: job.company,
-        location: job.location,
-        jobUrl: job.jobUrl || '',
-      }
-    });
-  };
-
-  const handleShare = async () => {
-    if (!job) return;
-    try {
-      await Share.share({
-        message: `Regarde cette offre d'emploi : ${job.title} chez ${job.company}\n${job.jobUrl}`,
-        url: job.jobUrl,
-        title: job.title,
-      });
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!job || !user) return;
-
-    // Vérifier si l'offre a des candidatures
-    const hasApps = await hasApplications(job.id);
-    
-    if (hasApps) {
-      Alert.alert(
-        'Impossible de supprimer',
-        'Cette offre a des candidatures en cours. Vous ne pouvez pas la supprimer.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
-    Alert.alert(
-      'Supprimer l\'offre',
-      `Êtes-vous sûr de vouloir supprimer l'offre "${job.title}" ? Cette action est irréversible.`,
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const success = await deleteJob(job.id, user.id);
-              if (success) {
-                Alert.alert('Succès', 'Offre supprimée avec succès', [
-                  { text: 'OK', onPress: () => router.back() }
-                ]);
-              } else {
-                Alert.alert('Erreur', 'Impossible de supprimer l\'offre');
-              }
-            } catch (error) {
-              console.error('Error deleting job:', error);
-              Alert.alert('Erreur', 'Une erreur est survenue lors de la suppression');
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-gray-50">
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={styles.loadingText}>Loading job details...</Text>
       </View>
     );
   }
 
   if (!job) {
     return (
-      <View className="flex-1 items-center justify-center bg-gray-50 p-4">
-        <Text className="text-lg text-gray-600 mb-4">Offre non trouvée</Text>
-        <TouchableOpacity
-          className="bg-primary-500 px-6 py-3 rounded-xl"
-          onPress={() => router.back()}
-        >
-          <Text className="text-white font-semibold">Retour</Text>
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>Job not found</Text>
+        <TouchableOpacity style={styles.button} onPress={() => router.back()}>
+          <Text style={styles.buttonText}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  return (
-    <View className="flex-1 bg-gray-50">
-      <Stack.Screen 
-        options={{
-          headerTitle: "",
-          headerTransparent: true,
-          headerLeft: () => (
-            <TouchableOpacity 
-              onPress={() => router.back()}
-              className="w-10 h-10 bg-white/80 rounded-full items-center justify-center ml-2 shadow-sm"
-            >
-              <Feather name="arrow-left" size={24} color={Colors.text} />
-            </TouchableOpacity>
-          ),
-          headerRight: () => (
-            <TouchableOpacity 
-              onPress={handleShare}
-              className="w-10 h-10 bg-white/80 rounded-full items-center justify-center mr-2 shadow-sm"
-            >
-              <Feather name="share" size={20} color={Colors.text} />
-            </TouchableOpacity>
-          ),
-        }} 
+  if (submittedApplication) {
+    return (
+      <ApplicationSuccessScreen
+        application={submittedApplication}
+        jobTitle={job.title}
       />
+    );
+  }
 
-      <ScrollView 
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: 100 }}
-      >
-        {/* Header Image Pattern */}
-        <View className="h-48 bg-primary-500 w-full relative">
-          <View className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-gray-50 to-transparent" />
-        </View>
+  if (showApplicationForm) {
+    return (
+      <ApplicationForm
+        jobId={job.id}
+        jobTitle={job.title}
+        onSubmitSuccess={(application) => {
+          setShowApplicationForm(false);
+          setSubmittedApplication(application);
+        }}
+        onCancel={() => setShowApplicationForm(false)}
+      />
+    );
+  }
 
-        <View className="px-5 -mt-12">
-          {/* Company Logo / Placeholder */}
-          <View className="w-24 h-24 bg-white rounded-2xl shadow-md items-center justify-center mb-4">
-            <Text className="text-3xl font-bold text-primary-500">
-              {job.company.charAt(0).toUpperCase()}
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      <View style={styles.header}>
+        <Text style={styles.title}>{job.title}</Text>
+        <Text style={styles.company}>{job.company}</Text>
+        <View style={styles.metaContainer}>
+          <View style={styles.metaItem}>
+            <Text style={styles.metaLabel}>Location</Text>
+            <Text style={styles.metaValue}>
+              {job.location} {job.remote && '(Remote)'}
             </Text>
           </View>
-
-          <Text className="text-2xl font-bold text-gray-900 mb-1">{job.title}</Text>
-          <Text className="text-lg text-gray-600 font-medium mb-4">{job.company}</Text>
-
-          {/* Tags */}
-          <View className="flex-row flex-wrap gap-2 mb-6">
-            <View className="flex-row items-center bg-blue-50 px-3 py-1.5 rounded-full">
-              <Feather name="map-pin" size={14} color={Colors.primary} />
-              <Text className="ml-1.5 text-blue-700 text-sm font-medium">{job.location}</Text>
-            </View>
-            <View className="flex-row items-center bg-purple-50 px-3 py-1.5 rounded-full">
-              <Feather name="briefcase" size={14} color="#9333ea" />
-              <Text className="ml-1.5 text-purple-700 text-sm font-medium">{job.type}</Text>
-            </View>
-            {job.salary && (
-              <View className="flex-row items-center bg-green-50 px-3 py-1.5 rounded-full">
-                <Feather name="dollar-sign" size={14} color="#16a34a" />
-                <Text className="ml-1.5 text-green-700 text-sm font-medium">{job.salary}</Text>
-              </View>
-            )}
-            {job.remote && (
-              <View className="flex-row items-center bg-orange-50 px-3 py-1.5 rounded-full">
-                <Feather name="home" size={14} color="#ea580c" />
-                <Text className="ml-1.5 text-orange-700 text-sm font-medium">Remote</Text>
-              </View>
-            )}
+          <View style={styles.metaItem}>
+            <Text style={styles.metaLabel}>Type</Text>
+            <Text style={styles.metaValue}>{job.type}</Text>
           </View>
-
-          {/* Section: Description */}
-          <View className="mb-6">
-            <Text className="text-lg font-bold text-gray-900 mb-3">Description du poste</Text>
-            <Text className="text-gray-600 leading-6">{job.description}</Text>
-          </View>
-
-          {/* Section: Requirements */}
-          {job.requirements && job.requirements.length > 0 && (
-            <View className="mb-6">
-              <Text className="text-lg font-bold text-gray-900 mb-3">Prérequis</Text>
-              <View className="gap-2">
-                {job.requirements.map((req, index) => (
-                  <View key={index} className="flex-row items-start">
-                    <View className="w-1.5 h-1.5 rounded-full bg-primary-500 mt-2 mr-3" />
-                    <Text className="flex-1 text-gray-600 leading-6">{req}</Text>
-                  </View>
-                ))}
-              </View>
+          {job.salary && (
+            <View style={styles.metaItem}>
+              <Text style={styles.metaLabel}>Salary</Text>
+              <Text style={styles.metaValue}>{job.salary}</Text>
             </View>
           )}
-
-          {/* Section: Metadata */}
-          <View className="border-t border-gray-200 pt-4 mt-2">
-            <View className="flex-row justify-between mb-2">
-              <Text className="text-gray-500">Source</Text>
-              <Text className="text-gray-900 font-medium">{job.source}</Text>
-            </View>
-            <View className="flex-row justify-between">
-              <Text className="text-gray-500">Publié le</Text>
-              <Text className="text-gray-900 font-medium">
-                {new Date(job.postedDate).toLocaleDateString()}
-              </Text>
-            </View>
-          </View>
         </View>
-      </ScrollView>
+      </View>
 
-      {/* Footer Action - Only show for candidates */}
-      {!isRecruiter && (
-        <View 
-          className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-5 py-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]"
-          style={{ paddingBottom: Math.max(insets.bottom, 16) }}
-        >
-          <TouchableOpacity
-            className="w-full bg-primary-500 py-4 rounded-xl items-center shadow-lg shadow-primary-500/30 active:opacity-90"
-            onPress={handleApply}
-          >
-            <Text className="text-white text-base font-bold">Postuler maintenant</Text>
-          </TouchableOpacity>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Job Description</Text>
+        <Text style={styles.sectionContent}>{job.description}</Text>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Requirements</Text>
+        {job.requirements.map((requirement, index) => (
+          <View key={index} style={styles.listItem}>
+            <Text style={styles.bullet}>•</Text>
+            <Text style={styles.listText}>{requirement}</Text>
+          </View>
+        ))}
+      </View>
+
+      {job.benefits && job.benefits.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Benefits</Text>
+          {job.benefits.map((benefit, index) => (
+            <View key={index} style={styles.listItem}>
+              <Text style={styles.bullet}>•</Text>
+              <Text style={styles.listText}>{benefit}</Text>
+            </View>
+          ))}
         </View>
       )}
-      
-      {/* Footer Action for Recruiters - Show edit/delete if it's their job */}
-      {isRecruiter && job && job.recruiterId === user?.id && (
-        <View 
-          className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-5 py-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]"
-          style={{ paddingBottom: Math.max(insets.bottom, 16) }}
-        >
-          <View className="flex-row gap-2 mb-2">
-            <TouchableOpacity
-              className="flex-1 bg-blue-500 py-3 rounded-xl items-center shadow-lg active:opacity-90"
-              onPress={() => router.push(`/job/${job.id}/edit`)}
-            >
-              <Text className="text-white text-sm font-bold">Modifier</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              className="flex-1 bg-primary-500 py-3 rounded-xl items-center shadow-lg shadow-primary-500/30 active:opacity-90"
-              onPress={() => router.push(`/recruiter/applications?jobId=${job.id}`)}
-            >
-              <Text className="text-white text-sm font-bold">Candidatures</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              className="flex-1 bg-green-500 py-3 rounded-xl items-center shadow-lg active:opacity-90"
-              onPress={() => {
-                router.push({
-                  pathname: '/job/new',
-                  params: {
-                    duplicate: 'true',
-                    title: job.title,
-                    company: job.company,
-                    location: job.location,
-                    type: job.type,
-                    description: job.description || '',
-                    salary: job.salary || '',
-                    jobUrl: job.jobUrl || '',
-                    remote: job.remote ? 'true' : 'false',
-                    requirements: job.requirements ? JSON.stringify(job.requirements) : '',
-                  }
-                });
-              }}
-            >
-              <Text className="text-white text-sm font-bold">Dupliquer</Text>
-            </TouchableOpacity>
-          </View>
-          <TouchableOpacity
-            className="bg-red-500 py-3 rounded-xl items-center shadow-lg active:opacity-90"
-            onPress={handleDelete}
-          >
-            <View className="flex-row items-center">
-              <Feather name="trash-2" size={18} color="#FFFFFF" />
-              <Text className="ml-2 text-white text-sm font-bold">Supprimer l'offre</Text>
-            </View>
-          </TouchableOpacity>
+
+      <View style={styles.footer}>
+        <View style={styles.dateInfo}>
+          <Text style={styles.dateText}>Posted: {new Date(job.postedDate).toLocaleDateString()}</Text>
+          {job.applicationDeadline && (
+            <Text style={styles.dateText}>
+              Deadline: {new Date(job.applicationDeadline).toLocaleDateString()}
+            </Text>
+          )}
         </View>
-      )}
-    </View>
+        <TouchableOpacity
+          style={styles.applyButton}
+          onPress={() => setShowApplicationForm(true)}
+        >
+          <Text style={styles.applyButtonText}>Apply Now</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  contentContainer: {
+    padding: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+  },
+  loadingText: {
+    marginTop: 12,
+    color: Colors.textSecondary,
+    fontSize: 16,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    color: Colors.error,
+    marginBottom: 20,
+  },
+  header: {
+    marginBottom: 24,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: Colors.text,
+    marginBottom: 8,
+  },
+  company: {
+    fontSize: 20,
+    color: Colors.primary,
+    marginBottom: 16,
+  },
+  metaContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  metaItem: {
+    minWidth: 120,
+  },
+  metaLabel: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  metaValue: {
+    fontSize: 16,
+    color: Colors.text,
+    fontWeight: '600',
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.text,
+    marginBottom: 12,
+  },
+  sectionContent: {
+    fontSize: 16,
+    color: Colors.text,
+    lineHeight: 24,
+  },
+  listItem: {
+    flexDirection: 'row',
+    marginBottom: 8,
+    alignItems: 'flex-start',
+  },
+  bullet: {
+    fontSize: 16,
+    color: Colors.primary,
+    marginRight: 8,
+    marginTop: 2,
+  },
+  listText: {
+    flex: 1,
+    fontSize: 16,
+    color: Colors.text,
+    lineHeight: 24,
+  },
+  footer: {
+    marginTop: 8,
+    marginBottom: 32,
+  },
+  dateInfo: {
+    marginBottom: 16,
+  },
+  dateText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    marginBottom: 4,
+  },
+  applyButton: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  applyButtonText: {
+    color: Colors.background,
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  button: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: Colors.background,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});

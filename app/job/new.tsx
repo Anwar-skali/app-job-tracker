@@ -22,19 +22,19 @@ export default function NewJobScreen() {
   const { user } = useAuth();
   const { canCreateJob } = usePermissions();
   const [loading, setLoading] = useState(false);
-  
+
   // Si duplication, pré-remplir avec les données de l'offre
   const isDuplicate = params.duplicate === 'true';
-  const initialRequirements = params.requirements 
+  const initialRequirements = params.requirements
     ? (() => {
-        try {
-          return JSON.parse(params.requirements as string);
-        } catch {
-          return [];
-        }
-      })()
+      try {
+        return JSON.parse(params.requirements as string);
+      } catch {
+        return [];
+      }
+    })()
     : [];
-  
+
   const [formData, setFormData] = useState({
     title: (params.title as string) || '',
     company: (params.company as string) || '',
@@ -93,14 +93,12 @@ export default function NewJobScreen() {
         requirements: formData.requirements.length > 0 ? formData.requirements : undefined,
       });
 
-      Alert.alert('Succès', 'Offre d\'emploi créée avec succès', [
-        { 
-          text: 'OK', 
-          onPress: () => {
-            router.replace('/(tabs)/jobs');
-          }
-        },
-      ]);
+      // Navigate first, then show alert (Alert callback doesn't work on web)
+      // Add small delay to ensure AsyncStorage persists the data
+      setTimeout(() => {
+        router.push('/(tabs)/jobs?refresh=' + Date.now());
+        Alert.alert('Succès', 'Offre d\'emploi créée avec succès');
+      }, 100);
     } catch (error) {
       console.error('Error creating job:', error);
       Alert.alert('Erreur', 'Impossible de créer l\'offre: ' + (error as any).message);
@@ -151,11 +149,10 @@ export default function NewJobScreen() {
             {Object.values(JobType).map(type => (
               <TouchableOpacity
                 key={type}
-                className={`rounded-full px-4 py-2 border-2 ${
-                  formData.type === type
-                    ? 'bg-primary-500 border-primary-500'
-                    : 'bg-white border-gray-200'
-                }`}
+                className={`rounded-full px-4 py-2 border-2 ${formData.type === type
+                  ? 'bg-primary-500 border-primary-500'
+                  : 'bg-white border-gray-200'
+                  }`}
                 onPress={() => setFormData({ ...formData, type })}
               >
                 <Text

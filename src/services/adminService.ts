@@ -1,38 +1,23 @@
-import { Platform } from 'react-native';
+import { db } from '@/config/firebaseConfig';
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  updateDoc,
+  deleteDoc,
+  query,
+  orderBy
+} from 'firebase/firestore';
 import { User, UserRole } from '@/types';
-import { Job } from '@/types/job';
-import { JobApplication } from '@/types/jobApplication';
 
 // Récupérer tous les utilisateurs (Admin uniquement)
 export const getAllUsers = async (): Promise<User[]> => {
-  if (Platform.OS === 'web') {
-    const webDb = await import('./database.web');
-    return await webDb.getAllUsers();
-  }
-
-  const dbModule = require('./database');
-  const database = dbModule.getDatabase();
-  
   try {
-    const result = await database.getAllAsync<any>(
-      'SELECT * FROM users ORDER BY createdAt DESC'
-    );
-    return result.map((user: any) => ({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      phone: user.phone || undefined,
-      address: user.address || undefined,
-      skills: user.skills ? JSON.parse(user.skills) : undefined,
-      experience: user.experience || undefined,
-      education: user.education || undefined,
-      linkedinUrl: user.linkedinUrl || undefined,
-      companyName: user.companyName || undefined,
-      companySector: user.companySector || undefined,
-      companyWebsite: user.companyWebsite || undefined,
-      companySize: user.companySize || undefined,
-    }));
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => doc.data() as User);
   } catch (error) {
     console.error('Error getting all users:', error);
     return [];
@@ -41,20 +26,13 @@ export const getAllUsers = async (): Promise<User[]> => {
 
 // Mettre à jour le rôle d'un utilisateur (Admin uniquement)
 export const updateUserRole = async (userId: string, newRole: UserRole): Promise<boolean> => {
-  if (Platform.OS === 'web') {
-    const webDb = await import('./database.web');
-    return await webDb.updateUserRole(userId, newRole);
-  }
-
-  const dbModule = require('./database');
-  const database = dbModule.getDatabase();
-  
   try {
-    const result = await database.runAsync(
-      'UPDATE users SET role = ?, updatedAt = ? WHERE id = ?',
-      [newRole, new Date().toISOString(), userId]
-    );
-    return result.changes > 0;
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+      role: newRole,
+      updatedAt: new Date().toISOString()
+    });
+    return true;
   } catch (error) {
     console.error('Error updating user role:', error);
     throw error;
@@ -63,20 +41,10 @@ export const updateUserRole = async (userId: string, newRole: UserRole): Promise
 
 // Supprimer un utilisateur (Admin uniquement)
 export const deleteUser = async (userId: string): Promise<boolean> => {
-  if (Platform.OS === 'web') {
-    const webDb = await import('./database.web');
-    return await webDb.deleteUser(userId);
-  }
-
-  const dbModule = require('./database');
-  const database = dbModule.getDatabase();
-  
   try {
-    const result = await database.runAsync(
-      'DELETE FROM users WHERE id = ?',
-      [userId]
-    );
-    return result.changes > 0;
+    const userRef = doc(db, 'users', userId);
+    await deleteDoc(userRef);
+    return true;
   } catch (error) {
     console.error('Error deleting user:', error);
     throw error;
@@ -98,9 +66,7 @@ export const getAdminStats = async (): Promise<AdminStats> => {
     const [users, jobs, applications] = await Promise.all([
       getAllUsers(),
       import('./jobService').then(m => m.getAllJobs()),
-      import('./database').then(async (db) => {
-        return await db.getAllApplicationsAdmin();
-      }),
+      import('./database').then(m => m.getAllApplicationsAdmin()),
     ]);
 
     const usersByRole: Record<UserRole, number> = {
@@ -137,4 +103,3 @@ export const getAdminStats = async (): Promise<AdminStats> => {
     };
   }
 };
-

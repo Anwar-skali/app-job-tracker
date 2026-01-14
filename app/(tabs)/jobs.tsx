@@ -10,11 +10,11 @@ import {
   Alert,
   Linking,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { JobList } from '@/components/JobList';
 import { fetchJobs, searchJobs } from '@/services/job';
-import { getAllJobs, fetchJobsByRecruiter } from '@/services/jobService';
+import { getAllJobs, getJobsByRecruiter } from '@/services/jobService';
 import { saveSearch, getSavedSearches, deleteSavedSearch, SavedSearch } from '@/services/savedSearchService';
 import { Job, JobFilters, JobType } from '@/types/job';
 import { Colors } from '@/constants/colors';
@@ -32,6 +32,7 @@ const JobTypeLabels: Record<JobType, string> = {
 
 export default function JobsScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ refresh?: string }>();
   const { user } = useAuth();
   const { isRecruiter } = usePermissions();
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -42,9 +43,10 @@ export default function JobsScreen() {
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
   const [showSavedSearches, setShowSavedSearches] = useState(false);
 
+  // Load jobs on mount and when refresh param changes (after creating a new job)
   useEffect(() => {
     loadJobs();
-  }, []);
+  }, [isRecruiter, user?.id, params.refresh]);
 
   useEffect(() => {
     // Debounce search
@@ -64,7 +66,7 @@ export default function JobsScreen() {
       setLoading(true);
       if (isRecruiter && user?.id) {
         // Pour les recruteurs, afficher uniquement leurs offres
-        const recruiterJobs = await fetchJobsByRecruiter(user.id, { ...filters, limit: 50 }).catch(() => []);
+        const recruiterJobs = await getJobsByRecruiter(user.id).catch(() => []);
         setJobs(recruiterJobs);
       } else {
         // Pour les postulants, afficher toutes les offres disponibles

@@ -1,29 +1,34 @@
-export enum UserRole {
-  ADMIN = 'admin',
-  RECRUITER = 'recruiter',
-  CANDIDATE = 'candidate',
-}
-
 export interface User {
   id: string;
   name: string;
   email: string;
-  role: UserRole;
-  // Champs communs
-  phone?: string;
-  address?: string;
-  // Champs spécifiques aux postulants
-  skills?: string[]; // Compétences
-  experience?: string; // Années d'expérience
-  education?: string; // Niveau d'éducation
-  linkedinUrl?: string;
-  // Champs spécifiques aux recruteurs
-  companyName?: string; // Nom de l'entreprise
-  companySector?: string; // Secteur d'activité
-  companyWebsite?: string; // Site web de l'entreprise
-  companySize?: string; // Taille de l'entreprise
 }
 
-export * from './auth';
-export * from './jobApplication';
-export * from './job';
+export interface Job {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  type: 'full-time' | 'part-time' | 'contract' | 'internship';
+  salary?: string;
+  description: string;
+  requirements: string[];
+  benefits?: string[];
+  postedDate: string;
+  applicationDeadline?: string;
+  remote?: boolean;
+}
+
+export interface Application {
+  id?: string;
+  jobId: string;
+  applicantName: string;
+  applicantEmail: string;
+  applicantPhone: string;
+  resume?: string;
+  coverLetter?: string;
+  linkedInUrl?: string;
+  portfolioUrl?: string;
+  submittedDate?: string;
+  status?: 'pending' | 'reviewing' | 'accepted' | 'rejected';
+}

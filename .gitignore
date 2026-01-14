@@ -67,8 +67,7 @@ coverage/
 
 # Misc
 *.log
-# Keep package-lock.json for npm
-# *.lock
+*.lock
 
 # IDE
 .vscode/

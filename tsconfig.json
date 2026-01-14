@@ -4,7 +4,7 @@
     "strict": true,
     "paths": {
       "@/*": [
-        "./src/*"
+        "./*"
       ],
       "@/components/*": [
         "./src/components/*"
@@ -26,18 +26,13 @@
       ],
       "@/constants/*": [
         "./src/constants/*"
-      ],
-      "@/store/*": [
-        "./src/store/*"
-      ],
-      "@/providers/*": [
-        "./src/providers/*"
       ]
     }
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
-    "nativewind-env.d.ts"
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
   ]
 }
