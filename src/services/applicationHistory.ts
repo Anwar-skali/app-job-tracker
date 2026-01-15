@@ -46,12 +46,16 @@ export const getApplicationHistory = async (applicationId: string): Promise<Appl
     const historyRef = collection(db, HISTORY_COLLECTION);
     const q = query(
       historyRef,
-      where('applicationId', '==', applicationId),
-      orderBy('changedAt', 'desc')
+      where('applicationId', '==', applicationId)
     );
 
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => doc.data() as ApplicationHistory);
+    const history = querySnapshot.docs.map(doc => doc.data() as ApplicationHistory);
+
+    // Sort in memory
+    return history.sort((a, b) =>
+      new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime()
+    );
   } catch (error) {
     console.error('Error getting application history:', error);
     return [];
