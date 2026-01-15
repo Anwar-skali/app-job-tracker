@@ -1,7 +1,14 @@
+export enum UserRole {
+  ADMIN = 'ADMIN',
+  RECRUITER = 'RECRUITER',
+  CANDIDATE = 'CANDIDATE',
+}
+
 export interface User {
   id: string;
   name: string;
   email: string;
+  role: UserRole;
 }
 
 export interface Job {

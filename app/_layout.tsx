@@ -1,7 +1,5 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-<<<<<<< Updated upstream
-=======
 import { useState, useEffect } from 'react';
 import { AuthProvider } from '@/providers/AuthProvider';
 import { initDatabase } from '@/services/database';
@@ -37,39 +35,11 @@ const DatabaseInitializer = ({ children }: { children: React.ReactNode }) => {
 
   return <>{children}</>;
 };
->>>>>>> Stashed changes
 
 export default function RootLayout() {
+  const { isDark } = useThemeStore();
+
   return (
-<<<<<<< Updated upstream
-    <>
-      <StatusBar style="auto" />
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="job/[id]"
-          options={{
-            title: 'Job Details',
-            headerShown: true,
-          }}
-        />
-        <Stack.Screen
-          name="applications/index"
-          options={{
-            title: 'My Applications',
-            headerShown: true,
-          }}
-        />
-        <Stack.Screen
-          name="applications/[id]"
-          options={{
-            title: 'Application Details',
-            headerShown: true,
-          }}
-        />
-      </Stack>
-    </>
-=======
     <SafeAreaProvider>
       <DatabaseInitializer>
         <AuthProvider>
@@ -95,7 +65,6 @@ export default function RootLayout() {
         </AuthProvider>
       </DatabaseInitializer>
     </SafeAreaProvider>
->>>>>>> Stashed changes
   );
 }
 

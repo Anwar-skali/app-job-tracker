@@ -5,13 +5,13 @@ import { getStorage } from "firebase/storage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyD_kVAMSRVpy7XEQhbh4rG_Y8TrtKSgv18",
-    authDomain: "app-job-tracker.firebaseapp.com",
-    projectId: "app-job-tracker",
-    storageBucket: "app-job-tracker.firebasestorage.app",
-    messagingSenderId: "1059424141738",
-    appId: "1:1059424141738:web:27ef1def2fc8b60901ebd3",
-    measurementId: "G-6CF50H16MC"
+    apiKey: "AIzaSyDRapogErid0EtCJ-CYbAJTOx_wXkYOpWc",
+    authDomain: "app-job-tracker-bb496.firebaseapp.com",
+    projectId: "app-job-tracker-bb496",
+    storageBucket: "app-job-tracker-bb496.firebasestorage.app",
+    messagingSenderId: "927179097034",
+    appId: "1:927179097034:web:c733cfaf48ac1ece554533",
+    measurementId: "G-YTXJHTZS26"
 };
 
 // Initialize Firebase

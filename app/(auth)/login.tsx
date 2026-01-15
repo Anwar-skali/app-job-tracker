@@ -25,27 +25,27 @@ export default function LoginScreen() {
 
   const onSubmit = async () => {
     setError(null);
-    
+
     if (!email.trim()) {
       setError('Veuillez entrer votre email');
       return;
     }
-    
+
     if (!validateEmail(email)) {
       setError('Email invalide');
       return;
     }
-    
+
     if (!password) {
       setError('Veuillez entrer votre mot de passe');
       return;
     }
-    
+
     if (password.length < 6) {
       setError('Le mot de passe doit contenir au moins 6 caractères');
       return;
     }
-    
+
     try {
       setLoading(true);
       await login({ email, password });

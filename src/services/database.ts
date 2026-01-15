@@ -26,14 +26,19 @@ export const getDatabase = () => db;
 // Applications CRUD
 export const getAllApplications = async (userId: string): Promise<JobApplication[]> => {
   const appsRef = collection(db, APPLICATIONS_COLLECTION);
+  // Remove orderBy to avoid composite index requirement
   const q = query(
     appsRef,
-    where('userId', '==', userId),
-    orderBy('applicationDate', 'desc')
+    where('userId', '==', userId)
   );
 
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => doc.data() as JobApplication);
+  const apps = querySnapshot.docs.map(doc => doc.data() as JobApplication);
+
+  // In-memory sort
+  return apps.sort((a, b) =>
+    new Date(b.applicationDate).getTime() - new Date(a.applicationDate).getTime()
+  );
 };
 
 export const getApplicationById = async (id: string, userId: string): Promise<JobApplication | null> => {
@@ -116,14 +121,19 @@ export const searchApplications = async (
 // Recruiter functions
 export const getApplicationsByRecruiter = async (recruiterId: string): Promise<JobApplication[]> => {
   const appsRef = collection(db, APPLICATIONS_COLLECTION);
+  // Remove orderBy to avoid composite index requirement
   const q = query(
     appsRef,
-    where('recruiterId', '==', recruiterId),
-    orderBy('applicationDate', 'desc')
+    where('recruiterId', '==', recruiterId)
   );
 
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => doc.data() as JobApplication);
+  const apps = querySnapshot.docs.map(doc => doc.data() as JobApplication);
+
+  // In-memory sort
+  return apps.sort((a, b) =>
+    new Date(b.applicationDate).getTime() - new Date(a.applicationDate).getTime()
+  );
 };
 
 // Admin functions

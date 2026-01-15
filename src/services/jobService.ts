@@ -36,27 +36,37 @@ export const createJob = async (job: Omit<Job, 'id' | 'createdAt' | 'updatedAt'>
 // Récupérer toutes les offres d'un recruteur
 export const getJobsByRecruiter = async (recruiterId: string): Promise<Job[]> => {
   const jobsRef = collection(db, JOBS_COLLECTION);
+  // Note: On retire orderBy pour éviter d'avoir besoin d'un index composite
   const q = query(
     jobsRef,
-    where('recruiterId', '==', recruiterId),
-    orderBy('postedDate', 'desc')
+    where('recruiterId', '==', recruiterId)
   );
 
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => doc.data() as Job);
+  const jobs = querySnapshot.docs.map(doc => doc.data() as Job);
+
+  // Tri en mémoire
+  return jobs.sort((a, b) =>
+    new Date(b.postedDate).getTime() - new Date(a.postedDate).getTime()
+  );
 };
 
 // Récupérer toutes les offres disponibles (pour les candidats)
 export const getAllJobs = async (): Promise<Job[]> => {
   const jobsRef = collection(db, JOBS_COLLECTION);
+  // Note: On retire orderBy pour éviter d'avoir besoin d'un index composite
   const q = query(
     jobsRef,
-    where('archived', '==', false),
-    orderBy('postedDate', 'desc')
+    where('archived', '==', false)
   );
 
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => doc.data() as Job);
+  const jobs = querySnapshot.docs.map(doc => doc.data() as Job);
+
+  // Tri en mémoire
+  return jobs.sort((a, b) =>
+    new Date(b.postedDate).getTime() - new Date(a.postedDate).getTime()
+  );
 };
 
 // Récupérer une offre par ID

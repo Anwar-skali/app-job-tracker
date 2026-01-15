@@ -90,13 +90,13 @@ export default function NewJobScreen() {
         ...formData,
         postedDate: new Date().toISOString(),
         recruiterId: user.id,
-        requirements: formData.requirements.length > 0 ? formData.requirements : undefined,
+        ...(formData.requirements.length > 0 ? { requirements: formData.requirements } : {}),
       });
 
       // Navigate first, then show alert (Alert callback doesn't work on web)
       // Add small delay to ensure AsyncStorage persists the data
       setTimeout(() => {
-        router.push('/(tabs)/jobs?refresh=' + Date.now());
+        router.push('/recruiter/jobs?refresh=' + Date.now());
         Alert.alert('Succès', 'Offre d\'emploi créée avec succès');
       }, 100);
     } catch (error) {
