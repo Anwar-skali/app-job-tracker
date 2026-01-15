@@ -7,13 +7,16 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
-import { getApplicationById, deleteApplication, createApplication } from '@/services/jobApplication';
+import { getApplicationById, deleteApplication, createApplication, updateApplication } from '@/services/jobApplication';
 import { getApplicationHistory } from '@/services/applicationHistory';
+import { getMessagesByApplication } from '@/services/messageService';
 import { scheduleReminderNotification } from '@/services/notificationService';
 import { JobApplication, ApplicationStatus, ApplicationHistory } from '@/types/jobApplication';
+import { Message } from '@/types/message';
 import { StatusConfig, ContractTypeLabels } from '@/constants';
 import { Feather } from '@expo/vector-icons';
 
@@ -23,7 +26,9 @@ export default function ApplicationDetailScreen() {
   const { user } = useAuth();
   const [application, setApplication] = useState<JobApplication | null>(null);
   const [history, setHistory] = useState<ApplicationHistory[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -36,9 +41,10 @@ export default function ApplicationDetailScreen() {
 
     try {
       setLoading(true);
-      const [data, historyData] = await Promise.all([
+      const [data, historyData, messagesData] = await Promise.all([
         getApplicationById(id, user.id),
         getApplicationHistory(id),
+        getMessagesByApplication(id),
       ]);
       if (!data) {
         Alert.alert('Erreur', 'Candidature non trouvée');
@@ -47,6 +53,7 @@ export default function ApplicationDetailScreen() {
       }
       setApplication(data);
       setHistory(historyData);
+      setMessages(messagesData);
     } catch (error) {
       Alert.alert('Erreur', 'Impossible de charger la candidature');
     } finally {
@@ -99,10 +106,21 @@ export default function ApplicationDetailScreen() {
     return null;
   }
 
-  const statusConfig = StatusConfig[application.status];
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadApplication();
+    setRefreshing(false);
+  };
+
+  const statusConfig = StatusConfig[application.status] || { label: application.status, color: '#000' };
 
   return (
-    <ScrollView className="flex-1 bg-gray-50">
+    <ScrollView
+      className="flex-1 bg-gray-50"
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2563EB']} />
+      }
+    >
       <View className="bg-white px-4 py-6 border-b border-gray-200">
         <View className="mb-3 flex-row items-start justify-between">
           <View className="flex-1 mr-3">
@@ -170,6 +188,23 @@ export default function ApplicationDetailScreen() {
         </View>
       )}
 
+      {messages.length > 0 && (
+        <View className="bg-white px-4 py-5 mb-2 border-b border-gray-200">
+          <Text className="mb-3 text-lg font-bold text-gray-900">Messages du recruteur</Text>
+          {messages.map((msg, index) => (
+            <View key={index} className="mb-3 p-3 bg-gray-50 rounded-lg">
+              <View className="flex-row justify-between mb-1">
+                <Text className="font-semibold text-gray-800">Recruteur</Text>
+                <Text className="text-xs text-gray-500">
+                  {new Date(msg.createdAt).toLocaleDateString()} {new Date(msg.createdAt).toLocaleTimeString()}
+                </Text>
+              </View>
+              <Text className="text-gray-700">{msg.content}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
       {application.documents && application.documents.length > 0 && (
         <View className="bg-white px-4 py-5 mb-2 border-b border-gray-200">
           <Text className="mb-3 text-lg font-bold text-gray-900">Documents joints</Text>
@@ -220,7 +255,7 @@ export default function ApplicationDetailScreen() {
             <Text className="text-center text-base font-semibold text-white">Dupliquer</Text>
           </TouchableOpacity>
         </View>
-        
+
         {/* Relance button - only for sent/interview status */}
         {(application.status === ApplicationStatus.SENT || application.status === ApplicationStatus.INTERVIEW) && (
           <TouchableOpacity
@@ -233,7 +268,7 @@ export default function ApplicationDetailScreen() {
                   lastFollowUp: new Date().toISOString(),
                   followUpCount: followUpCount,
                 }, user.id);
-                
+
                 // Planifier une notification de rappel dans 7 jours
                 const settings = await import('@/services/notificationService').then(m => m.getNotificationSettings());
                 if (settings.enabled && settings.reminders) {
@@ -244,7 +279,7 @@ export default function ApplicationDetailScreen() {
                     settings.reminderDays || 7
                   );
                 }
-                
+
                 Alert.alert('Succès', `Relance enregistrée (${followUpCount} relance${followUpCount > 1 ? 's' : ''})`);
                 // Recharger les données
                 const updated = await getApplicationById(application.id, user.id);
@@ -262,7 +297,7 @@ export default function ApplicationDetailScreen() {
             </Text>
           </TouchableOpacity>
         )}
-        
+
         <TouchableOpacity
           className="w-full rounded-xl bg-red-500 py-4 shadow-lg"
           onPress={handleDelete}

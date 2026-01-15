@@ -34,12 +34,15 @@ export const getMessagesByApplication = async (applicationId: string): Promise<M
   const msgsRef = collection(db, MESSAGES_COLLECTION);
   const q = query(
     msgsRef,
-    where('applicationId', '==', applicationId),
-    orderBy('createdAt', 'asc')
+    where('applicationId', '==', applicationId)
   );
 
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => doc.data() as Message);
+  const messages = querySnapshot.docs.map(doc => doc.data() as Message);
+
+  return messages.sort((a, b) =>
+    new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
 };
 
 // Marquer un message comme lu

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,43 +11,48 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Job, Application } from '../../src/types';
 import { ApplicationForm, ApplicationSuccessScreen } from '../../src/components';
 import { Colors } from '../../src/constants';
-
-const mockJob: Job = {
-  id: '1',
-  title: 'Senior Software Engineer',
-  company: 'Tech Corp',
-  location: 'San Francisco, CA',
-  type: 'full-time',
-  salary: '$120,000 - $150,000',
-  description:
-    'We are looking for an experienced Senior Software Engineer to join our dynamic team. You will be responsible for designing and developing scalable web applications, collaborating with cross-functional teams, and mentoring junior developers.',
-  requirements: [
-    '5+ years of experience in software development',
-    'Proficiency in React, TypeScript, and Node.js',
-    'Experience with cloud platforms (AWS, Azure, or GCP)',
-    'Strong problem-solving and communication skills',
-    'Bachelor\'s degree in Computer Science or related field',
-  ],
-  benefits: [
-    'Health, dental, and vision insurance',
-    '401(k) matching',
-    'Flexible work hours',
-    'Remote work options',
-    'Professional development budget',
-  ],
-  postedDate: '2024-01-15',
-  applicationDeadline: '2024-02-15',
-  remote: true,
-};
+import { getJobById } from '../../src/services/jobService';
+import { getApplications } from '../../src/services/jobApplication';
+import { usePermissions } from '../../src/hooks/usePermissions';
+import { useAuth } from '../../src/hooks/useAuth';
+import { StatusConfig } from '../../src/constants';
+import { ApplicationStatus } from '../../src/types/jobApplication';
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { isRecruiter } = usePermissions();
   const [showApplicationForm, setShowApplicationForm] = useState(false);
   const [submittedApplication, setSubmittedApplication] = useState<Application | null>(null);
-  const [isLoading] = useState(false);
+  const [job, setJob] = useState<Job | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const job = mockJob;
+  const { user } = useAuth();
+  const [existingApplication, setExistingApplication] = useState<Application | null>(null);
+
+  useEffect(() => {
+    const loadJobAndApplication = async () => {
+      if (!id) return;
+      try {
+        setIsLoading(true);
+        const [fetchedJob] = await Promise.all([getJobById(id)]);
+        setJob(fetchedJob);
+
+        if (user && !isRecruiter) {
+          const userApps = await getApplications(user.id);
+          const found = userApps.find(app => app.jobId === id);
+          if (found) {
+            setExistingApplication(found as any);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching job details:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadJobAndApplication();
+  }, [id, user, isRecruiter, submittedApplication]); // Re-run if a new app is submitted
 
   if (isLoading) {
     return (
@@ -83,6 +88,9 @@ export default function JobDetailScreen() {
       <ApplicationForm
         jobId={job.id}
         jobTitle={job.title}
+        recruiterId={job.recruiterId}
+        company={job.company}
+        location={job.location}
         onSubmitSuccess={(application) => {
           setShowApplicationForm(false);
           setSubmittedApplication(application);
@@ -153,12 +161,22 @@ export default function JobDetailScreen() {
             </Text>
           )}
         </View>
-        <TouchableOpacity
-          style={styles.applyButton}
-          onPress={() => setShowApplicationForm(true)}
-        >
-          <Text style={styles.applyButtonText}>Apply Now</Text>
-        </TouchableOpacity>
+        {!isRecruiter && (
+          existingApplication ? (
+            <View style={[styles.applyButton, { backgroundColor: StatusConfig[existingApplication.status].color + '20' }]}>
+              <Text style={[styles.applyButtonText, { color: StatusConfig[existingApplication.status].color }]}>
+                {StatusConfig[existingApplication.status].label}
+              </Text>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.applyButton}
+              onPress={() => setShowApplicationForm(true)}
+            >
+              <Text style={styles.applyButtonText}>Apply Now</Text>
+            </TouchableOpacity>
+          )
+        )}
       </View>
     </ScrollView>
   );

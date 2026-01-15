@@ -40,24 +40,32 @@ export const createApplication = async (application: Omit<JobApplication, 'id' |
 export const updateApplication = async (
   id: string,
   updates: Partial<JobApplication>,
-  userId: string,
+  requestorId: string,
   changedBy?: string // Pour l'historique (userId ou recruiterId)
 ): Promise<JobApplication | null> => {
   // Si le statut change, enregistrer dans l'historique
   if (updates.status) {
     const { addApplicationHistory } = await import('./applicationHistory');
-    const existing = await dbGetApplicationById(id, userId);
+    // We need to fetch the existing application to check status change
+    // We can use dbGetApplicationById but it needs requestorId
+    const existing = await dbGetApplicationById(id, requestorId);
+
     if (existing && existing.status !== updates.status) {
       await addApplicationHistory(
         id,
         existing.status,
         updates.status,
-        changedBy || userId
+        changedBy || requestorId
       );
     }
   }
-  
-  return await dbUpdateApplication(id, updates, userId);
+
+  return await dbUpdateApplication(id, updates, requestorId);
+};
+
+export const forceUpdateStatus = async (id: string, status: string, requestorId: string) => {
+  const { forceUpdateApplicationStatus } = await import('./database');
+  return await forceUpdateApplicationStatus(id, status, requestorId);
 };
 
 // Supprimer une candidature
@@ -75,7 +83,7 @@ export const filterApplications = async (
     const searchResults = await searchApplications(userId, filters.searchQuery);
     // Appliquer les autres filtres sur les résultats de recherche
     let filtered = searchResults;
-    
+
     if (filters.status) {
       filtered = filtered.filter(app => app.status === filters.status);
     }
@@ -90,7 +98,7 @@ export const filterApplications = async (
     }
     return filtered;
   }
-  
+
   // Sinon utiliser dbFilterApplications
   return await dbFilterApplications(userId, {
     status: filters.status,
@@ -105,7 +113,7 @@ export const getApplicationStats = async (userId: string): Promise<ApplicationSt
   try {
     const applications = await getAllApplications(userId);
     const total = applications.length;
-    
+
     // Répartition par statut
     const byStatus: Record<ApplicationStatus, number> = {
       [ApplicationStatus.TO_APPLY]: 0,
@@ -114,19 +122,19 @@ export const getApplicationStats = async (userId: string): Promise<ApplicationSt
       [ApplicationStatus.REFUSED]: 0,
       [ApplicationStatus.ACCEPTED]: 0,
     };
-    
+
     applications.forEach(app => {
       byStatus[app.status] = (byStatus[app.status] || 0) + 1;
     });
-    
+
     // Nombre d'entretiens
     const interviews = byStatus[ApplicationStatus.INTERVIEW] + byStatus[ApplicationStatus.ACCEPTED];
-    
+
     // Taux de réussite (acceptées / total envoyées)
-    const sent = byStatus[ApplicationStatus.SENT] + byStatus[ApplicationStatus.INTERVIEW] + 
-                 byStatus[ApplicationStatus.ACCEPTED] + byStatus[ApplicationStatus.REFUSED];
+    const sent = byStatus[ApplicationStatus.SENT] + byStatus[ApplicationStatus.INTERVIEW] +
+      byStatus[ApplicationStatus.ACCEPTED] + byStatus[ApplicationStatus.REFUSED];
     const successRate = sent > 0 ? (byStatus[ApplicationStatus.ACCEPTED] / sent) * 100 : 0;
-    
+
     // Évolution dans le temps (groupé par mois)
     const evolutionMap = new Map<string, number>();
     applications.forEach(app => {
@@ -134,11 +142,11 @@ export const getApplicationStats = async (userId: string): Promise<ApplicationSt
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       evolutionMap.set(monthKey, (evolutionMap.get(monthKey) || 0) + 1);
     });
-    
+
     const evolution = Array.from(evolutionMap.entries())
       .map(([date, count]) => ({ date, count }))
       .sort((a, b) => a.date.localeCompare(b.date));
-    
+
     return {
       total,
       byStatus,

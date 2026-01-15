@@ -25,7 +25,7 @@ export default function ApplicationsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { user } = useAuth();
-  const { canCreateApplication } = usePermissions();
+  const { canCreateApplication, isRecruiter } = usePermissions();
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [filteredApplications, setFilteredApplications] = useState<JobApplication[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -177,6 +177,23 @@ export default function ApplicationsScreen() {
         </View>
       )}
       <View className="bg-white px-4 py-4 border-b border-gray-100 shadow-soft">
+        {isRecruiter && (
+          <View className="mb-4 bg-blue-50 p-4 rounded-xl border border-blue-100 flex-row items-start">
+            <Feather name="info" size={20} color="#2563EB" style={{ marginTop: 2 }} />
+            <View className="ml-3 flex-1">
+              <Text className="text-blue-800 font-bold text-sm">Vue Candidat</Text>
+              <Text className="text-blue-600 text-sm mt-1">
+                Cette page affiche vos candidatures personnelles. Pour voir les candidatures reçues pour vos offres, allez dans le menu Recruteur.
+              </Text>
+              <TouchableOpacity
+                className="mt-2 bg-blue-100 self-start px-3 py-1.5 rounded-lg"
+                onPress={() => router.push('/recruiter/applications')}
+              >
+                <Text className="text-blue-700 font-semibold text-xs">Voir les candidatures reçues</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
         <View className="relative">
           <View className="absolute left-4 top-4 z-10">
             <Feather name="search" size={20} color="#9CA3AF" />

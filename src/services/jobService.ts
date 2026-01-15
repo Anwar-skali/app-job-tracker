@@ -27,6 +27,7 @@ export const createJob = async (job: Omit<Job, 'id' | 'createdAt' | 'updatedAt'>
     id: newJobRef.id,
     createdAt: now,
     updatedAt: now,
+    archived: job.archived ?? false, // Par défaut, non archivé
   };
 
   await setDoc(newJobRef, newJob);

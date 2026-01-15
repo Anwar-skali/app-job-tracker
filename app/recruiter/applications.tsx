@@ -70,15 +70,15 @@ export default function RecruiterApplicationsScreen() {
         getApplicationsByRecruiter(user.id),
         getJobsByRecruiter(user.id),
       ]);
-      
+
       let data = applicationsData;
-      
+
       // Filtrer par jobId si fourni dans les paramètres
       if (params.jobId) {
         data = data.filter(app => app.jobId === params.jobId);
         setJobFilter(params.jobId as string);
       }
-      
+
       setApplications(data);
       setJobs(jobsData);
       applyFilters(data);
@@ -152,8 +152,6 @@ export default function RecruiterApplicationsScreen() {
       const application = applications.find(app => app.id === applicationId);
       if (!application) return;
 
-      // Pour l'instant, on met à jour localement
-      // TODO: Modifier updateApplication pour accepter recruiterId
       setApplications(prev =>
         prev.map(app =>
           app.id === applicationId
@@ -163,7 +161,13 @@ export default function RecruiterApplicationsScreen() {
       );
 
       // Mettre à jour dans la base de données avec l'historique
-      await updateApplication(applicationId, { status: newStatus }, application.userId, user.id);
+      // On utilise forceUpdateStatus pour garantir la mise à jour même si recruiterId manque
+      const { forceUpdateStatus } = await import('@/services/jobApplication');
+      const success = await forceUpdateStatus(applicationId, newStatus, user.id);
+
+      if (!success) {
+        throw new Error("Update failed in database");
+      }
 
       // Envoyer une notification au candidat
       const { sendStatusChangeNotification } = await import('@/services/notificationService');
@@ -259,7 +263,7 @@ export default function RecruiterApplicationsScreen() {
   return (
     <View className="flex-1 bg-gray-50">
       <Stack.Screen options={{ title: 'Candidatures reçues' }} />
-      
+
       {/* Filters */}
       <View className="bg-white border-b border-gray-200">
         <View className="px-4 py-3">
@@ -288,19 +292,17 @@ export default function RecruiterApplicationsScreen() {
               </TouchableOpacity>
             </View>
           </View>
-          
+
           {/* Status Filter */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-2">
             <View className="flex-row gap-2">
               <TouchableOpacity
                 onPress={() => setStatusFilter('all')}
-                className={`px-4 py-2 rounded-full ${
-                  statusFilter === 'all' ? 'bg-primary-500' : 'bg-gray-100'
-                }`}
+                className={`px-4 py-2 rounded-full ${statusFilter === 'all' ? 'bg-primary-500' : 'bg-gray-100'
+                  }`}
               >
-                <Text className={`text-sm font-semibold ${
-                  statusFilter === 'all' ? 'text-white' : 'text-gray-700'
-                }`}>
+                <Text className={`text-sm font-semibold ${statusFilter === 'all' ? 'text-white' : 'text-gray-700'
+                  }`}>
                   Toutes ({applications.length})
                 </Text>
               </TouchableOpacity>
@@ -310,13 +312,11 @@ export default function RecruiterApplicationsScreen() {
                   <TouchableOpacity
                     key={status}
                     onPress={() => setStatusFilter(status)}
-                    className={`px-4 py-2 rounded-full ${
-                      statusFilter === status ? 'bg-primary-500' : 'bg-gray-100'
-                    }`}
+                    className={`px-4 py-2 rounded-full ${statusFilter === status ? 'bg-primary-500' : 'bg-gray-100'
+                      }`}
                   >
-                    <Text className={`text-sm font-semibold ${
-                      statusFilter === status ? 'text-white' : 'text-gray-700'
-                    }`}>
+                    <Text className={`text-sm font-semibold ${statusFilter === status ? 'text-white' : 'text-gray-700'
+                      }`}>
                       {StatusConfig[status].label} ({count})
                     </Text>
                   </TouchableOpacity>
@@ -335,13 +335,11 @@ export default function RecruiterApplicationsScreen() {
                   <View className="flex-row gap-2">
                     <TouchableOpacity
                       onPress={() => setJobFilter('all')}
-                      className={`px-3 py-1.5 rounded-full ${
-                        jobFilter === 'all' ? 'bg-blue-500' : 'bg-gray-100'
-                      }`}
+                      className={`px-3 py-1.5 rounded-full ${jobFilter === 'all' ? 'bg-blue-500' : 'bg-gray-100'
+                        }`}
                     >
-                      <Text className={`text-xs font-semibold ${
-                        jobFilter === 'all' ? 'text-white' : 'text-gray-700'
-                      }`}>
+                      <Text className={`text-xs font-semibold ${jobFilter === 'all' ? 'text-white' : 'text-gray-700'
+                        }`}>
                         Toutes
                       </Text>
                     </TouchableOpacity>
@@ -351,13 +349,11 @@ export default function RecruiterApplicationsScreen() {
                         <TouchableOpacity
                           key={job.id}
                           onPress={() => setJobFilter(job.id)}
-                          className={`px-3 py-1.5 rounded-full ${
-                            jobFilter === job.id ? 'bg-blue-500' : 'bg-gray-100'
-                          }`}
+                          className={`px-3 py-1.5 rounded-full ${jobFilter === job.id ? 'bg-blue-500' : 'bg-gray-100'
+                            }`}
                         >
-                          <Text className={`text-xs font-semibold ${
-                            jobFilter === job.id ? 'text-white' : 'text-gray-700'
-                          }`} numberOfLines={1}>
+                          <Text className={`text-xs font-semibold ${jobFilter === job.id ? 'text-white' : 'text-gray-700'
+                            }`} numberOfLines={1}>
                             {job.title} ({count})
                           </Text>
                         </TouchableOpacity>
@@ -380,13 +376,11 @@ export default function RecruiterApplicationsScreen() {
                     <TouchableOpacity
                       key={filter.key}
                       onPress={() => setDateFilter(filter.key as any)}
-                      className={`px-3 py-1.5 rounded-full ${
-                        dateFilter === filter.key ? 'bg-green-500' : 'bg-gray-100'
-                      }`}
+                      className={`px-3 py-1.5 rounded-full ${dateFilter === filter.key ? 'bg-green-500' : 'bg-gray-100'
+                        }`}
                     >
-                      <Text className={`text-xs font-semibold ${
-                        dateFilter === filter.key ? 'text-white' : 'text-gray-700'
-                      }`}>
+                      <Text className={`text-xs font-semibold ${dateFilter === filter.key ? 'text-white' : 'text-gray-700'
+                        }`}>
                         {filter.label}
                       </Text>
                     </TouchableOpacity>
@@ -410,8 +404,8 @@ export default function RecruiterApplicationsScreen() {
           <View className="items-center justify-center py-20">
             <Feather name="inbox" size={48} color="#9CA3AF" />
             <Text className="mt-4 text-base text-gray-500">
-              {statusFilter === 'all' 
-                ? 'Aucune candidature reçue' 
+              {statusFilter === 'all'
+                ? 'Aucune candidature reçue'
                 : `Aucune candidature avec le statut "${StatusConfig[statusFilter as ApplicationStatus]?.label}"`}
             </Text>
           </View>
@@ -464,15 +458,83 @@ export default function RecruiterApplicationsScreen() {
                 </View>
               )}
 
+              {/* Messages Section */}
+              <View className="mb-4">
+                <Text className="text-sm font-semibold text-gray-700 mb-2">Messages</Text>
+                <View className="bg-gray-50 rounded-xl p-3 mb-2 max-h-60 overflow-hidden">
+                  <ScrollView nestedScrollEnabled>
+                    {messages.length === 0 ? (
+                      <Text className="text-gray-500 italic text-center py-4">Aucun message</Text>
+                    ) : (
+                      messages.map((msg, index) => (
+                        <View key={index} className="mb-3">
+                          <View className="flex-row justify-between mb-1">
+                            <Text className={`text-xs font-bold ${msg.senderId === user?.id ? 'text-primary-600' : 'text-gray-700'}`}>
+                              {msg.senderId === user?.id ? 'Moi' : 'Candidat'}
+                            </Text>
+                            <Text className="text-xs text-gray-400">
+                              {new Date(msg.createdAt).toLocaleDateString()} {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </Text>
+                          </View>
+                          <View className={`p-3 rounded-lg ${msg.senderId === user?.id ? 'bg-primary-100 ml-4' : 'bg-white border border-gray-200 mr-4'}`}>
+                            <Text className="text-gray-800">{msg.content}</Text>
+                          </View>
+                        </View>
+                      ))
+                    )}
+                  </ScrollView>
+                </View>
+
+                <View className="flex-row items-center gap-2">
+                  <TextInput
+                    className="flex-1 bg-white border border-gray-300 rounded-lg px-4 py-3 text-gray-900"
+                    placeholder="Écrire un message..."
+                    value={newMessage}
+                    onChangeText={setNewMessage}
+                    multiline
+                  />
+                  <TouchableOpacity
+                    className={`p-3 rounded-lg ${!newMessage.trim() || sendingMessage ? 'bg-gray-200' : 'bg-primary-500'}`}
+                    disabled={!newMessage.trim() || sendingMessage}
+                    onPress={async () => {
+                      if (!newMessage.trim() || !selectedApplication || !user) return;
+                      try {
+                        setSendingMessage(true);
+                        await createMessage({
+                          applicationId: selectedApplication.id,
+                          senderId: user.id, // Recruiter ID
+                          receiverId: selectedApplication.userId, // Candidate ID
+                          content: newMessage.trim(),
+                          read: false,
+                        });
+                        setNewMessage('');
+                        // Reload messages
+                        const msgs = await getMessagesByApplication(selectedApplication.id);
+                        setMessages(msgs);
+                      } catch (error) {
+                        Alert.alert('Erreur', 'Impossible d\'envoyer le message');
+                      } finally {
+                        setSendingMessage(false);
+                      }
+                    }}
+                  >
+                    {sendingMessage ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Feather name="send" size={20} color={!newMessage.trim() ? '#9CA3AF' : '#fff'} />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+
               <View className="mb-4">
                 <Text className="text-sm font-semibold text-gray-700 mb-3">Changer le statut</Text>
                 <View className="gap-2">
                   <TouchableOpacity
-                    className={`p-4 rounded-xl border-2 ${
-                      selectedApplication.status === ApplicationStatus.INTERVIEW
-                        ? 'bg-blue-50 border-blue-500'
-                        : 'bg-white border-gray-200'
-                    }`}
+                    className={`p-4 rounded-xl border-2 ${selectedApplication.status === ApplicationStatus.INTERVIEW
+                      ? 'bg-blue-50 border-blue-500'
+                      : 'bg-white border-gray-200'
+                      }`}
                     onPress={() => updateApplicationStatus(selectedApplication.id, ApplicationStatus.INTERVIEW)}
                     disabled={updatingStatus}
                   >
@@ -483,11 +545,10 @@ export default function RecruiterApplicationsScreen() {
                         color={selectedApplication.status === ApplicationStatus.INTERVIEW ? '#2563EB' : '#6B7280'}
                       />
                       <Text
-                        className={`ml-3 text-base font-semibold ${
-                          selectedApplication.status === ApplicationStatus.INTERVIEW
-                            ? 'text-blue-700'
-                            : 'text-gray-700'
-                        }`}
+                        className={`ml-3 text-base font-semibold ${selectedApplication.status === ApplicationStatus.INTERVIEW
+                          ? 'text-blue-700'
+                          : 'text-gray-700'
+                          }`}
                       >
                         Convoquer en entretien
                       </Text>
@@ -495,11 +556,10 @@ export default function RecruiterApplicationsScreen() {
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    className={`p-4 rounded-xl border-2 ${
-                      selectedApplication.status === ApplicationStatus.ACCEPTED
-                        ? 'bg-green-50 border-green-500'
-                        : 'bg-white border-gray-200'
-                    }`}
+                    className={`p-4 rounded-xl border-2 ${selectedApplication.status === ApplicationStatus.ACCEPTED
+                      ? 'bg-green-50 border-green-500'
+                      : 'bg-white border-gray-200'
+                      }`}
                     onPress={() => updateApplicationStatus(selectedApplication.id, ApplicationStatus.ACCEPTED)}
                     disabled={updatingStatus}
                   >
@@ -510,11 +570,10 @@ export default function RecruiterApplicationsScreen() {
                         color={selectedApplication.status === ApplicationStatus.ACCEPTED ? '#16A34A' : '#6B7280'}
                       />
                       <Text
-                        className={`ml-3 text-base font-semibold ${
-                          selectedApplication.status === ApplicationStatus.ACCEPTED
-                            ? 'text-green-700'
-                            : 'text-gray-700'
-                        }`}
+                        className={`ml-3 text-base font-semibold ${selectedApplication.status === ApplicationStatus.ACCEPTED
+                          ? 'text-green-700'
+                          : 'text-gray-700'
+                          }`}
                       >
                         Accepter
                       </Text>
@@ -522,11 +581,10 @@ export default function RecruiterApplicationsScreen() {
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    className={`p-4 rounded-xl border-2 ${
-                      selectedApplication.status === ApplicationStatus.REFUSED
-                        ? 'bg-red-50 border-red-500'
-                        : 'bg-white border-gray-200'
-                    }`}
+                    className={`p-4 rounded-xl border-2 ${selectedApplication.status === ApplicationStatus.REFUSED
+                      ? 'bg-red-50 border-red-500'
+                      : 'bg-white border-gray-200'
+                      }`}
                     onPress={() => updateApplicationStatus(selectedApplication.id, ApplicationStatus.REFUSED)}
                     disabled={updatingStatus}
                   >
@@ -537,11 +595,10 @@ export default function RecruiterApplicationsScreen() {
                         color={selectedApplication.status === ApplicationStatus.REFUSED ? '#EF4444' : '#6B7280'}
                       />
                       <Text
-                        className={`ml-3 text-base font-semibold ${
-                          selectedApplication.status === ApplicationStatus.REFUSED
-                            ? 'text-red-700'
-                            : 'text-gray-700'
-                        }`}
+                        className={`ml-3 text-base font-semibold ${selectedApplication.status === ApplicationStatus.REFUSED
+                          ? 'text-red-700'
+                          : 'text-gray-700'
+                          }`}
                       >
                         Refuser
                       </Text>

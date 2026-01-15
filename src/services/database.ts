@@ -41,12 +41,17 @@ export const getAllApplications = async (userId: string): Promise<JobApplication
   );
 };
 
-export const getApplicationById = async (id: string, userId: string): Promise<JobApplication | null> => {
+export const getApplicationById = async (id: string, requestorId: string): Promise<JobApplication | null> => {
   const appRef = doc(db, APPLICATIONS_COLLECTION, id);
   const appDoc = await getDoc(appRef);
 
-  if (!appDoc.exists() || appDoc.data().userId !== userId) return null;
-  return appDoc.data() as JobApplication;
+  if (!appDoc.exists()) return null;
+
+  const data = appDoc.data() as JobApplication;
+  // Allow access if user is the applicant OR the recruiter
+  if (data.userId !== requestorId && data.recruiterId !== requestorId) return null;
+
+  return data;
 };
 
 export const hasUserAppliedToJob = async (userId: string, jobId: string): Promise<boolean> => {
@@ -79,12 +84,52 @@ export const createApplication = async (application: Omit<JobApplication, 'id' |
 export const updateApplication = async (
   id: string,
   updates: Partial<JobApplication>,
-  userId: string
+  requestorId: string
 ): Promise<JobApplication | null> => {
   const appRef = doc(db, APPLICATIONS_COLLECTION, id);
   const appDoc = await getDoc(appRef);
 
-  if (!appDoc.exists() || appDoc.data().userId !== userId) return null;
+  if (!appDoc.exists()) return null;
+
+  const data = appDoc.data() as JobApplication;
+
+  console.log('[updateApplication] Requestor:', requestorId);
+  console.log('[updateApplication] App Owner:', data.userId);
+  console.log('[updateApplication] App Recruiter:', data.recruiterId);
+
+  // Allow update if user is the applicant OR the recruiter
+  let hasPermission = false;
+
+  if (data.userId === requestorId) {
+    hasPermission = true;
+  } else if (data.recruiterId === requestorId) {
+    hasPermission = true;
+  } else {
+    // FALLBACK: Check if user owns the Job (handle legacy data where recruiterId missing on App)
+    if (data.jobId) {
+      const jobRef = doc(db, 'jobs', data.jobId);
+      const jobDoc = await getDoc(jobRef);
+      if (jobDoc.exists()) {
+        const jobData = jobDoc.data();
+        if (jobData.recruiterId === requestorId) {
+          hasPermission = true;
+          updates.recruiterId = requestorId;
+          if (typeof window !== 'undefined') window.alert("Auto-fixed Recruiter ID!");
+        } else {
+          if (typeof window !== 'undefined') window.alert(`Job Recruiter Mismatch: Job(${jobData.recruiterId}) vs Requestor(${requestorId})`);
+        }
+      } else {
+        if (typeof window !== 'undefined') window.alert(`Job not found: ${data.jobId}`);
+      }
+    } else {
+      if (typeof window !== 'undefined') window.alert("Application has no Job ID");
+    }
+  }
+
+  if (!hasPermission) {
+    console.warn('[updateApplication] Permission denied');
+    return null;
+  }
 
   const now = new Date().toISOString();
   await updateDoc(appRef, {
@@ -92,7 +137,7 @@ export const updateApplication = async (
     updatedAt: now,
   });
 
-  return await getApplicationById(id, userId);
+  return await getApplicationById(id, requestorId);
 };
 
 export const deleteApplication = async (id: string, userId: string): Promise<boolean> => {
@@ -103,6 +148,62 @@ export const deleteApplication = async (id: string, userId: string): Promise<boo
 
   await deleteDoc(appRef);
   return true;
+};
+
+// Force update for Recruiters (Bypass standard flow to fix legacy data)
+export const forceUpdateApplicationStatus = async (
+  id: string,
+  status: string,
+  requestorId: string
+): Promise<boolean> => {
+  try {
+    const appRef = doc(db, APPLICATIONS_COLLECTION, id);
+    const appDoc = await getDoc(appRef);
+
+    if (!appDoc.exists()) {
+      console.error('App not found');
+      return false;
+    }
+
+    const data = appDoc.data() as JobApplication;
+    let allowed = false;
+    let shouldPatchRecruiterId = false;
+
+    // Check direct permission
+    if (data.recruiterId === requestorId) {
+      allowed = true;
+    }
+    // Check job ownership
+    else if (data.jobId) {
+      const jobRef = doc(db, 'jobs', data.jobId);
+      const jobDoc = await getDoc(jobRef);
+      if (jobDoc.exists() && jobDoc.data().recruiterId === requestorId) {
+        allowed = true;
+        shouldPatchRecruiterId = true;
+      }
+    }
+
+    if (!allowed) {
+      if (typeof window !== 'undefined') window.alert("Permission Denied (Force Update)");
+      return false;
+    }
+
+    const updates: any = {
+      status: status,
+      updatedAt: new Date().toISOString()
+    };
+
+    if (shouldPatchRecruiterId) {
+      updates.recruiterId = requestorId;
+    }
+
+    await updateDoc(appRef, updates);
+    return true;
+  } catch (error) {
+    console.error('Force Update Error:', error);
+    if (typeof window !== 'undefined') window.alert("Force Update Exception: " + error);
+    return false;
+  }
 };
 
 // Search (Firestore basic search)
@@ -142,4 +243,39 @@ export const getAllApplicationsAdmin = async (): Promise<JobApplication[]> => {
   const q = query(appsRef, orderBy('createdAt', 'desc'));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => doc.data() as JobApplication);
+};
+
+export const filterApplications = async (
+  userId: string,
+  filters: {
+    status?: string;
+    contractType?: string;
+    startDate?: string;
+    endDate?: string;
+  }
+): Promise<JobApplication[]> => {
+  // Use existing getAllApplications and filter in-memory to safely handle complex filters without composite indexes
+  const apps = await getAllApplications(userId);
+
+  return apps.filter(app => {
+    let matches = true;
+
+    if (filters.status && app.status !== filters.status) {
+      matches = false;
+    }
+
+    if (filters.contractType && app.contractType !== filters.contractType) {
+      matches = false;
+    }
+
+    if (filters.startDate && app.applicationDate < filters.startDate) {
+      matches = false;
+    }
+
+    if (filters.endDate && app.applicationDate > filters.endDate) {
+      matches = false;
+    }
+
+    return matches;
+  });
 };
