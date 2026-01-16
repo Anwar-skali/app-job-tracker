@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
+import { useRouter, useLocalSearchParams, Stack, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import {
@@ -47,9 +47,11 @@ export default function ApplicationsScreen() {
     }
   }, [params.success]);
 
-  useEffect(() => {
-    loadApplications();
-  }, [user]);
+  useFocusEffect(
+    useCallback(() => {
+      loadApplications();
+    }, [user])
+  );
 
   useEffect(() => {
     applyFilters();

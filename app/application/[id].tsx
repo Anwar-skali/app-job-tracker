@@ -199,7 +199,7 @@ export default function ApplicationDetailScreen() {
                   {new Date(msg.createdAt).toLocaleDateString()} {new Date(msg.createdAt).toLocaleTimeString()}
                 </Text>
               </View>
-              <Text className="text-gray-700">{msg.content}</Text>
+              <Text className="text-gray-700">{msg.message}</Text>
             </View>
           ))}
         </View>
@@ -217,93 +217,121 @@ export default function ApplicationDetailScreen() {
         </View>
       )}
 
-      <View className="px-4 py-6 gap-3">
-        <View className="flex-row gap-3">
-          <TouchableOpacity
-            className="flex-1 rounded-xl bg-primary-500 py-4 shadow-lg shadow-primary-500/30"
-            onPress={() => router.push(`/application/${application.id}/edit` as any)}
-          >
-            <Text className="text-center text-base font-semibold text-white">Modifier</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            className="flex-1 rounded-xl bg-green-500 py-4 shadow-lg"
-            onPress={async () => {
-              if (!user || !application) return;
-              try {
-                await createApplication({
-                  title: application.title,
-                  company: application.company,
-                  location: application.location,
-                  jobUrl: application.jobUrl,
-                  contractType: application.contractType,
-                  applicationDate: new Date().toISOString().split('T')[0],
-                  status: ApplicationStatus.TO_APPLY,
-                  notes: '',
-                  cvUrl: application.cvUrl,
-                  cvFileName: application.cvFileName,
-                  jobId: application.jobId,
-                  recruiterId: application.recruiterId,
-                  userId: user.id,
-                });
-                Alert.alert('Succès', 'Candidature dupliquée avec succès');
-                router.push('/(tabs)/applications');
-              } catch (error) {
-                Alert.alert('Erreur', 'Impossible de dupliquer la candidature');
-              }
-            }}
-          >
-            <Text className="text-center text-base font-semibold text-white">Dupliquer</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Relance button - only for sent/interview status */}
-        {(application.status === ApplicationStatus.SENT || application.status === ApplicationStatus.INTERVIEW) && (
-          <TouchableOpacity
-            className="w-full rounded-xl bg-orange-500 py-4 shadow-lg flex-row items-center justify-center"
-            onPress={async () => {
-              if (!user || !application) return;
-              try {
-                const followUpCount = (application.followUpCount || 0) + 1;
-                await updateApplication(application.id, {
-                  lastFollowUp: new Date().toISOString(),
-                  followUpCount: followUpCount,
-                }, user.id);
-
-                // Planifier une notification de rappel dans 7 jours
-                const settings = await import('@/services/notificationService').then(m => m.getNotificationSettings());
-                if (settings.enabled && settings.reminders) {
-                  await scheduleReminderNotification(
-                    application.id,
-                    application.title,
-                    application.company,
-                    settings.reminderDays || 7
-                  );
-                }
-
-                Alert.alert('Succès', `Relance enregistrée (${followUpCount} relance${followUpCount > 1 ? 's' : ''})`);
-                // Recharger les données
-                const updated = await getApplicationById(application.id, user.id);
-                if (updated) {
-                  setApplication(updated);
-                }
-              } catch (error) {
-                Alert.alert('Erreur', 'Impossible d\'enregistrer la relance');
-              }
-            }}
-          >
-            <Feather name="send" size={18} color="#FFFFFF" />
-            <Text className="ml-2 text-center text-base font-semibold text-white">
-              Relancer le recruteur
-            </Text>
-          </TouchableOpacity>
+      {/* Decision Final Notice */}
+      {(application.status === ApplicationStatus.ACCEPTED ||
+        application.status === ApplicationStatus.REFUSED ||
+        application.status === ApplicationStatus.INTERVIEW) && (
+          <View className="mx-4 mt-4 bg-blue-50 p-4 rounded-xl border border-blue-100 flex-row items-start">
+            <Feather name="lock" size={18} color="#2563EB" style={{ marginTop: 2, marginRight: 12 }} />
+            <View className="flex-1">
+              <Text className="text-blue-900 font-bold text-sm mb-1">Candidature verrouillée</Text>
+              <Text className="text-blue-700 text-xs leading-5">
+                Une décision a été prise pour cette candidature. Les modifications et la suppression sont désormais désactivées.
+              </Text>
+            </View>
+          </View>
         )}
 
-        <TouchableOpacity
-          className="w-full rounded-xl bg-red-500 py-4 shadow-lg"
-          onPress={handleDelete}
-        >
-          <Text className="text-center text-base font-semibold text-white">Supprimer</Text>
-        </TouchableOpacity>
+      <View className="px-4 py-6 gap-3">
+        {(() => {
+          const isLocked = application.status === ApplicationStatus.ACCEPTED ||
+            application.status === ApplicationStatus.REFUSED ||
+            application.status === ApplicationStatus.INTERVIEW;
+
+          return (
+            <>
+              <View className="flex-row gap-3">
+                <TouchableOpacity
+                  className={`flex-1 rounded-xl py-4 shadow-lg ${isLocked ? 'bg-gray-300' : 'bg-primary-500 shadow-primary-500/30'}`}
+                  onPress={() => !isLocked && router.push(`/application/${application.id}/edit` as any)}
+                  disabled={isLocked}
+                >
+                  <Text className="text-center text-base font-semibold text-white">Modifier</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  className={`flex-1 rounded-xl py-4 shadow-lg ${isLocked ? 'bg-gray-300' : 'bg-green-500'}`}
+                  onPress={async () => {
+                    if (isLocked || !user || !application) return;
+                    try {
+                      await createApplication({
+                        title: application.title,
+                        company: application.company,
+                        location: application.location,
+                        jobUrl: application.jobUrl,
+                        contractType: application.contractType,
+                        applicationDate: new Date().toISOString().split('T')[0],
+                        status: ApplicationStatus.TO_APPLY,
+                        notes: '',
+                        cvUrl: application.cvUrl,
+                        cvFileName: application.cvFileName,
+                        jobId: application.jobId,
+                        recruiterId: application.recruiterId,
+                        userId: user.id,
+                      });
+                      Alert.alert('Succès', 'Candidature dupliquée avec succès');
+                      router.push('/(tabs)/applications');
+                    } catch (error) {
+                      Alert.alert('Erreur', 'Impossible de dupliquer la candidature');
+                    }
+                  }}
+                  disabled={isLocked}
+                >
+                  <Text className="text-center text-base font-semibold text-white">Dupliquer</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Relance button - only for sent/interview status and IF NOT ACCEPTED/REFUSED */}
+              {(application.status === ApplicationStatus.SENT || application.status === ApplicationStatus.INTERVIEW) && (
+                <TouchableOpacity
+                  className="w-full rounded-xl bg-orange-500 py-4 shadow-lg flex-row items-center justify-center"
+                  onPress={async () => {
+                    if (!user || !application) return;
+                    try {
+                      const followUpCount = (application.followUpCount || 0) + 1;
+                      await updateApplication(application.id, {
+                        lastFollowUp: new Date().toISOString(),
+                        followUpCount: followUpCount,
+                      }, user.id);
+
+                      // Planifier une notification de rappel dans 7 jours
+                      const settings = await import('@/services/notificationService').then(m => m.getNotificationSettings());
+                      if (settings.enabled && settings.reminders) {
+                        await scheduleReminderNotification(
+                          application.id,
+                          application.title,
+                          application.company,
+                          settings.reminderDays || 7
+                        );
+                      }
+
+                      Alert.alert('Succès', `Relance enregistrée (${followUpCount} relance${followUpCount > 1 ? 's' : ''})`);
+                      // Recharger les données
+                      const updated = await getApplicationById(application.id, user.id);
+                      if (updated) {
+                        setApplication(updated);
+                      }
+                    } catch (error) {
+                      Alert.alert('Erreur', 'Impossible d\'enregistrer la relance');
+                    }
+                  }}
+                >
+                  <Feather name="send" size={18} color="#FFFFFF" />
+                  <Text className="ml-2 text-center text-base font-semibold text-white">
+                    Relancer le recruteur
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                className={`w-full rounded-xl py-4 shadow-lg ${isLocked ? 'bg-gray-200' : 'bg-red-500'}`}
+                onPress={() => !isLocked && handleDelete()}
+                disabled={isLocked}
+              >
+                <Text className={`text-center text-base font-semibold ${isLocked ? 'text-gray-400' : 'text-white'}`}>Supprimer</Text>
+              </TouchableOpacity>
+            </>
+          );
+        })()}
       </View>
     </ScrollView>
   );

@@ -11,7 +11,8 @@ import {
   StatusBar,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { Job, Application } from '../../src/types';
+import { Job } from '../../src/types/job';
+import { JobApplication, ApplicationStatus } from '../../src/types/jobApplication';
 import { ApplicationForm, ApplicationSuccessScreen } from '../../src/components';
 import { Colors } from '../../src/constants';
 import { getJobById } from '../../src/services/jobService';
@@ -26,12 +27,12 @@ export default function JobDetailScreen() {
   const router = useRouter();
   const { isRecruiter } = usePermissions();
   const [showApplicationForm, setShowApplicationForm] = useState(false);
-  const [submittedApplication, setSubmittedApplication] = useState<Application | null>(null);
+  const [submittedApplication, setSubmittedApplication] = useState<JobApplication | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const { user } = useAuth();
-  const [existingApplication, setExistingApplication] = useState<Application | null>(null);
+  const [existingApplication, setExistingApplication] = useState<JobApplication | null>(null);
 
   useEffect(() => {
     const loadJobAndApplication = async () => {
@@ -115,21 +116,21 @@ export default function JobDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen 
+      <Stack.Screen
         options={{
           headerTitle: "",
           headerTransparent: true,
           headerLeft: () => (
-            <TouchableOpacity 
-              onPress={() => router.back()} 
+            <TouchableOpacity
+              onPress={() => router.back()}
               style={styles.backButton}
             >
               <Ionicons name="arrow-back" size={24} color={Colors.text} />
             </TouchableOpacity>
           ),
-        }} 
+        }}
       />
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
@@ -141,7 +142,7 @@ export default function JobDetailScreen() {
           </View>
           <Text style={styles.title}>{job.title}</Text>
           <Text style={styles.company}>{job.company}</Text>
-          
+
           <View style={styles.tagsContainer}>
             <View style={styles.tag}>
               <Ionicons name="location-outline" size={14} color={Colors.textSecondary} />
@@ -158,18 +159,18 @@ export default function JobDetailScreen() {
               </View>
             )}
           </View>
-          
+
           <View style={styles.divider} />
-          
+
           <View style={styles.dateContainer}>
-             <Ionicons name="time-outline" size={14} color={Colors.textSecondary} />
-             <Text style={styles.dateText}>Posted {new Date(job.postedDate).toLocaleDateString()}</Text>
-             {job.applicationDeadline && (
-               <>
-                 <Text style={styles.dateSeparator}>•</Text>
-                 <Text style={styles.dateText}>Deadline: {new Date(job.applicationDeadline).toLocaleDateString()}</Text>
-               </>
-             )}
+            <Ionicons name="time-outline" size={14} color={Colors.textSecondary} />
+            <Text style={styles.dateText}>Posted {new Date(job.postedDate).toLocaleDateString()}</Text>
+            {job.applicationDeadline && (
+              <>
+                <Text style={styles.dateSeparator}>•</Text>
+                <Text style={styles.dateText}>Deadline: {new Date(job.applicationDeadline).toLocaleDateString()}</Text>
+              </>
+            )}
           </View>
         </View>
 
@@ -182,7 +183,7 @@ export default function JobDetailScreen() {
         {/* Requirements Section */}
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Requirements</Text>
-          {job.requirements.map((requirement, index) => (
+          {(job.requirements || []).map((requirement, index) => (
             <View key={index} style={styles.listItem}>
               <View style={styles.bulletPoint} />
               <Text style={styles.listText}>{requirement}</Text>
@@ -202,7 +203,7 @@ export default function JobDetailScreen() {
             ))}
           </View>
         )}
-        
+
         {/* Bottom spacer to account for fixed footer */}
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -211,18 +212,21 @@ export default function JobDetailScreen() {
       {!isRecruiter && (
         <View style={styles.footer}>
           {existingApplication ? (
-            <View style={[styles.statusBanner, { backgroundColor: StatusConfig[existingApplication.status].color + '15', borderColor: StatusConfig[existingApplication.status].color + '30' }]}>
-              <Ionicons 
+            <View style={[styles.statusBanner, {
+              backgroundColor: (StatusConfig[existingApplication.status]?.color || Colors.textSecondary) + '15',
+              borderColor: (StatusConfig[existingApplication.status]?.color || Colors.textSecondary) + '30'
+            }]}>
+              <Ionicons
                 name={
-                  existingApplication.status === 'accepted' ? 'checkmark-circle' :
-                  existingApplication.status === 'rejected' ? 'close-circle' :
-                  'hourglass'
-                } 
-                size={20} 
-                color={StatusConfig[existingApplication.status].color} 
+                  existingApplication.status === ApplicationStatus.ACCEPTED ? 'checkmark-circle' :
+                    existingApplication.status === ApplicationStatus.REFUSED ? 'close-circle' :
+                      'hourglass'
+                }
+                size={20}
+                color={StatusConfig[existingApplication.status]?.color || Colors.textSecondary}
               />
-              <Text style={[styles.statusText, { color: StatusConfig[existingApplication.status].color }]}>
-                Status: {StatusConfig[existingApplication.status].label}
+              <Text style={[styles.statusText, { color: StatusConfig[existingApplication.status]?.color || Colors.textSecondary }]}>
+                Status: {StatusConfig[existingApplication.status]?.label || existingApplication.status}
               </Text>
             </View>
           ) : (

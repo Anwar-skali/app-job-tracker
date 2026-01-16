@@ -477,7 +477,7 @@ export default function RecruiterApplicationsScreen() {
                             </Text>
                           </View>
                           <View className={`p-3 rounded-lg ${msg.senderId === user?.id ? 'bg-primary-100 ml-4' : 'bg-white border border-gray-200 mr-4'}`}>
-                            <Text className="text-gray-800">{msg.content}</Text>
+                            <Text className="text-gray-800">{msg.message}</Text>
                           </View>
                         </View>
                       ))
@@ -503,9 +503,8 @@ export default function RecruiterApplicationsScreen() {
                         await createMessage({
                           applicationId: selectedApplication.id,
                           senderId: user.id, // Recruiter ID
-                          receiverId: selectedApplication.userId, // Candidate ID
-                          content: newMessage.trim(),
-                          read: false,
+                          senderRole: 'recruiter',
+                          message: newMessage.trim(),
                         });
                         setNewMessage('');
                         // Reload messages
@@ -529,82 +528,99 @@ export default function RecruiterApplicationsScreen() {
 
               <View className="mb-4">
                 <Text className="text-sm font-semibold text-gray-700 mb-3">Changer le statut</Text>
-                <View className="gap-2">
-                  <TouchableOpacity
-                    className={`p-4 rounded-xl border-2 ${selectedApplication.status === ApplicationStatus.INTERVIEW
-                      ? 'bg-blue-50 border-blue-500'
-                      : 'bg-white border-gray-200'
-                      }`}
-                    onPress={() => updateApplicationStatus(selectedApplication.id, ApplicationStatus.INTERVIEW)}
-                    disabled={updatingStatus}
-                  >
-                    <View className="flex-row items-center">
-                      <Feather
-                        name="calendar"
-                        size={20}
-                        color={selectedApplication.status === ApplicationStatus.INTERVIEW ? '#2563EB' : '#6B7280'}
-                      />
-                      <Text
-                        className={`ml-3 text-base font-semibold ${selectedApplication.status === ApplicationStatus.INTERVIEW
-                          ? 'text-blue-700'
-                          : 'text-gray-700'
-                          }`}
-                      >
-                        Convoquer en entretien
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
+                {(() => {
+                  const isLocked = selectedApplication.status === ApplicationStatus.INTERVIEW ||
+                    selectedApplication.status === ApplicationStatus.ACCEPTED ||
+                    selectedApplication.status === ApplicationStatus.REFUSED;
 
-                  <TouchableOpacity
-                    className={`p-4 rounded-xl border-2 ${selectedApplication.status === ApplicationStatus.ACCEPTED
-                      ? 'bg-green-50 border-green-500'
-                      : 'bg-white border-gray-200'
-                      }`}
-                    onPress={() => updateApplicationStatus(selectedApplication.id, ApplicationStatus.ACCEPTED)}
-                    disabled={updatingStatus}
-                  >
-                    <View className="flex-row items-center">
-                      <Feather
-                        name="check-circle"
-                        size={20}
-                        color={selectedApplication.status === ApplicationStatus.ACCEPTED ? '#16A34A' : '#6B7280'}
-                      />
-                      <Text
-                        className={`ml-3 text-base font-semibold ${selectedApplication.status === ApplicationStatus.ACCEPTED
-                          ? 'text-green-700'
-                          : 'text-gray-700'
-                          }`}
-                      >
-                        Accepter
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
+                  return (
+                    <View className="gap-2">
+                      {isLocked && (
+                        <View className="bg-blue-50 p-3 rounded-lg mb-2 flex-row items-center border border-blue-100">
+                          <Feather name="lock" size={16} color="#2563EB" />
+                          <Text className="ml-2 text-xs text-blue-700 font-medium">
+                            La décision a été prise et ne peut plus être modifiée.
+                          </Text>
+                        </View>
+                      )}
 
-                  <TouchableOpacity
-                    className={`p-4 rounded-xl border-2 ${selectedApplication.status === ApplicationStatus.REFUSED
-                      ? 'bg-red-50 border-red-500'
-                      : 'bg-white border-gray-200'
-                      }`}
-                    onPress={() => updateApplicationStatus(selectedApplication.id, ApplicationStatus.REFUSED)}
-                    disabled={updatingStatus}
-                  >
-                    <View className="flex-row items-center">
-                      <Feather
-                        name="x-circle"
-                        size={20}
-                        color={selectedApplication.status === ApplicationStatus.REFUSED ? '#EF4444' : '#6B7280'}
-                      />
-                      <Text
-                        className={`ml-3 text-base font-semibold ${selectedApplication.status === ApplicationStatus.REFUSED
-                          ? 'text-red-700'
-                          : 'text-gray-700'
-                          }`}
+                      <TouchableOpacity
+                        className={`p-4 rounded-xl border-2 ${selectedApplication.status === ApplicationStatus.INTERVIEW
+                          ? 'bg-blue-50 border-blue-500'
+                          : 'bg-white border-gray-200'
+                          } ${isLocked && selectedApplication.status !== ApplicationStatus.INTERVIEW ? 'opacity-50' : ''}`}
+                        onPress={() => !isLocked && updateApplicationStatus(selectedApplication.id, ApplicationStatus.INTERVIEW)}
+                        disabled={updatingStatus || isLocked}
                       >
-                        Refuser
-                      </Text>
+                        <View className="flex-row items-center">
+                          <Feather
+                            name="calendar"
+                            size={20}
+                            color={selectedApplication.status === ApplicationStatus.INTERVIEW ? '#2563EB' : '#6B7280'}
+                          />
+                          <Text
+                            className={`ml-3 text-base font-semibold ${selectedApplication.status === ApplicationStatus.INTERVIEW
+                              ? 'text-blue-700'
+                              : 'text-gray-700'
+                              }`}
+                          >
+                            Convoquer en entretien
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        className={`p-4 rounded-xl border-2 ${selectedApplication.status === ApplicationStatus.ACCEPTED
+                          ? 'bg-green-50 border-green-500'
+                          : 'bg-white border-gray-200'
+                          } ${isLocked && selectedApplication.status !== ApplicationStatus.ACCEPTED ? 'opacity-50' : ''}`}
+                        onPress={() => !isLocked && updateApplicationStatus(selectedApplication.id, ApplicationStatus.ACCEPTED)}
+                        disabled={updatingStatus || isLocked}
+                      >
+                        <View className="flex-row items-center">
+                          <Feather
+                            name="check-circle"
+                            size={20}
+                            color={selectedApplication.status === ApplicationStatus.ACCEPTED ? '#16A34A' : '#6B7280'}
+                          />
+                          <Text
+                            className={`ml-3 text-base font-semibold ${selectedApplication.status === ApplicationStatus.ACCEPTED
+                              ? 'text-green-700'
+                              : 'text-gray-700'
+                              }`}
+                          >
+                            Accepter
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        className={`p-4 rounded-xl border-2 ${selectedApplication.status === ApplicationStatus.REFUSED
+                          ? 'bg-red-50 border-red-500'
+                          : 'bg-white border-gray-200'
+                          } ${isLocked && selectedApplication.status !== ApplicationStatus.REFUSED ? 'opacity-50' : ''}`}
+                        onPress={() => !isLocked && updateApplicationStatus(selectedApplication.id, ApplicationStatus.REFUSED)}
+                        disabled={updatingStatus || isLocked}
+                      >
+                        <View className="flex-row items-center">
+                          <Feather
+                            name="x-circle"
+                            size={20}
+                            color={selectedApplication.status === ApplicationStatus.REFUSED ? '#EF4444' : '#6B7280'}
+                          />
+                          <Text
+                            className={`ml-3 text-base font-semibold ${selectedApplication.status === ApplicationStatus.REFUSED
+                              ? 'text-red-700'
+                              : 'text-gray-700'
+                              }`}
+                          >
+                            Refuser
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
                     </View>
-                  </TouchableOpacity>
-                </View>
+                  );
+                })()}
               </View>
             </ScrollView>
           )}

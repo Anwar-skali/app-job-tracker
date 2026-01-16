@@ -15,8 +15,9 @@ import { Feather } from '@expo/vector-icons';
 import { JobList } from '@/components/JobList';
 import { fetchJobs, searchJobs } from '@/services/job';
 import { getAllJobs, getJobsByRecruiter } from '@/services/jobService';
-import { saveSearch, getSavedSearches, deleteSavedSearch, SavedSearch } from '@/services/savedSearchService';
+import { saveSearch, getSavedSearches, deleteSavedSearch, updateSavedSearch } from '@/services/savedSearchService';
 import { Job, JobFilters, JobType } from '@/types/job';
+import { SavedSearch } from '@/types/savedSearch';
 import { Colors } from '@/constants/colors';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -60,6 +61,22 @@ export default function JobsScreen() {
 
     return () => clearTimeout(timer);
   }, [searchQuery, filters]);
+
+  const loadSavedSearches = async () => {
+    if (!user?.id) return;
+    try {
+      const searches = await getSavedSearches(user.id);
+      setSavedSearches(searches);
+    } catch (error) {
+      console.error('Error loading saved searches:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (!isRecruiter && user?.id) {
+      loadSavedSearches();
+    }
+  }, [isRecruiter, user?.id]);
 
   const loadJobs = async () => {
     try {
@@ -190,7 +207,7 @@ export default function JobsScreen() {
                       { text: 'Annuler', style: 'cancel' },
                       {
                         text: 'Sauvegarder',
-                        onPress: async (name) => {
+                        onPress: async (name: string) => {
                           if (name) {
                             await saveSearch({
                               userId: user.id,
@@ -225,7 +242,7 @@ export default function JobsScreen() {
                     style={styles.savedSearchContent}
                     onPress={async () => {
                       setSearchQuery(search.searchQuery || '');
-                      setFilters(search.filters);
+                      setFilters({ ...search.filters, type: search.filters.type as JobType | undefined });
                       await updateSavedSearch(search.id, {});
                       setShowSavedSearches(false);
                     }}
@@ -376,7 +393,7 @@ export default function JobsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.background,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -390,7 +407,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.background,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -412,7 +429,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.background,
     borderWidth: 1,
     borderColor: Colors.border,
     alignItems: 'center',
@@ -441,7 +458,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   filterInput: {
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.background,
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: 8,
@@ -457,7 +474,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.background,
     borderWidth: 1,
     borderColor: Colors.border,
     marginRight: 8,
@@ -521,6 +538,51 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 14,
     color: Colors.textSecondary,
+  },
+  filtersHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 8,
+  },
+  filtersTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: Colors.textSecondary,
+    fontSize: 14,
+    padding: 20,
+  },
+  savedSearchItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  savedSearchContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  savedSearchInfo: {
+    flex: 1,
+  },
+  savedSearchName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  savedSearchDetails: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: 2,
   },
 });
 

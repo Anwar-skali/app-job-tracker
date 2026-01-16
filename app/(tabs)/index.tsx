@@ -15,7 +15,7 @@ import { Colors } from '@/constants';
 import { useAuth } from '@/hooks/useAuth';
 import { UserRole } from '@/types';
 import { Feather } from '@expo/vector-icons';
-import { getApplicationStats, getApplications } from '@/services/jobApplication';
+import { getApplicationStats, getApplications, getApplicationsByRecruiter } from '@/services/jobApplication';
 import { getJobsByRecruiter } from '@/services/jobService';
 import { JobApplication, ApplicationStats, ApplicationStatus } from '@/types/jobApplication';
 import { Job } from '@/types/job';
@@ -36,7 +36,7 @@ export default function DashboardScreen() {
   const [candidateStats, setCandidateStats] = useState<ApplicationStats | null>(null);
   const [recentApplications, setRecentApplications] = useState<JobApplication[]>([]);
   const [recruiterJobs, setRecruiterJobs] = useState<Job[]>([]);
-  const [recruiterJobStats, setRecruiterJobStats] = useState({ active: 0, archived: 0, total: 0 });
+  const [recruiterJobStats, setRecruiterJobStats] = useState({ active: 0, archived: 0, total: 0, totalCandidates: 0 });
 
   const loadData = async () => {
     if (!user) return;
@@ -49,11 +49,20 @@ export default function DashboardScreen() {
         const apps = await getApplications(user.id);
         setRecentApplications(apps);
       } else if (user.role === UserRole.RECRUITER) {
-        const jobs = await getJobsByRecruiter(user.id);
+        const [jobs, applications] = await Promise.all([
+          getJobsByRecruiter(user.id),
+          getApplicationsByRecruiter(user.id)
+        ]);
+
         setRecruiterJobs(jobs);
-        const active = jobs.filter(j => !j.archived).length;
-        const archived = jobs.filter(j => j.archived).length;
-        setRecruiterJobStats({ active, archived, total: jobs.length });
+        const active = jobs.filter((j: Job) => !j.archived).length;
+        const archived = jobs.filter((j: Job) => j.archived).length;
+        setRecruiterJobStats({
+          active,
+          archived,
+          total: jobs.length,
+          totalCandidates: applications.length
+        });
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -110,9 +119,9 @@ export default function DashboardScreen() {
   const renderCandidateView = () => {
     // Donut Data
     const donutData = candidateStats ? [
-      { value: candidateStats.byStatus[ApplicationStatus.PENDING] || 0, color: '#3B82F6', label: 'En attente' }, // Blue
+      { value: candidateStats.byStatus[ApplicationStatus.SENT] || 0, color: '#3B82F6', label: 'En attente' }, // Blue
       { value: candidateStats.byStatus[ApplicationStatus.ACCEPTED] || 0, color: '#10B981', label: 'Acceptées' }, // Green
-      { value: candidateStats.byStatus[ApplicationStatus.REJECTED] || 0, color: '#EF4444', label: 'Refusées' }, // Red
+      { value: candidateStats.byStatus[ApplicationStatus.REFUSED] || 0, color: '#EF4444', label: 'Refusées' }, // Red
       { value: candidateStats.interviews || 0, color: '#F59E0B', label: 'Entretiens' }, // Orange
     ].filter(d => d.value > 0) : [];
 
@@ -155,7 +164,7 @@ export default function DashboardScreen() {
           <KpiCard
             icon="alert-circle"
             label="Refusées"
-            value={candidateStats?.byStatus[ApplicationStatus.REJECTED] || 0}
+            value={candidateStats?.byStatus[ApplicationStatus.REFUSED] || 0}
             color="#EF4444"
             bgColor="#FEE2E2"
           />
@@ -225,20 +234,7 @@ export default function DashboardScreen() {
   };
 
   const renderRecruiterView = () => {
-    // Donut Data
-    const donutData = [
-      { value: recruiterJobStats.active, color: '#10B981', label: 'Actives' },
-      { value: recruiterJobStats.archived, color: '#6B7280', label: 'Archivées' },
-    ].filter(d => d.value > 0);
-    if (donutData.length === 0) donutData.push({ value: 1, color: '#E5E7EB', label: 'Aucune donnée' });
 
-    // Bar Data (Mocked)
-    const barData = [
-      { label: 'Q1', value: 10 },
-      { label: 'Q2', value: 15 },
-      { label: 'Q3', value: 8 },
-      { label: 'Q4', value: recruiterJobStats.total },
-    ];
 
     return (
       <View style={styles.dashboardGrid}>
@@ -268,48 +264,101 @@ export default function DashboardScreen() {
           <KpiCard
             icon="users"
             label="Candidats Total"
-            value={"12"} // Mocked total candidates across jobs
+            value={recruiterJobStats.totalCandidates}
             color="#EF4444"
             bgColor="#FEE2E2"
           />
         </View>
 
-        {/* Charts Row */}
-        <View style={[styles.chartsRow, { flexDirection: isLargeScreen ? 'row' : 'column' }]}>
-          <View style={[styles.chartCard, styles.barChartCard]}>
-            <View style={styles.chartHeader}>
-              <View style={[styles.chartIcon, { backgroundColor: '#EDE9FE' }]}>
-                <Feather name="bar-chart-2" size={20} color="#8B5CF6" />
-              </View>
-              <Text style={styles.chartTitle}>Tendances Recrutement</Text>
-            </View>
-            <BarChart data={barData} height={200} barColor="#A78BFA" />
-          </View>
+        {/* Action Buttons Row */}
+        <View style={{ gap: 16 }}>
+          {/* Create Offer Action */}
+          <TouchableOpacity
+            onPress={() => router.push('/job/new')}
+            activeOpacity={0.9}
+            style={{
+              backgroundColor: Colors.primary,
+              borderRadius: 24,
+              padding: 24,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              shadowColor: Colors.primary,
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.3,
+              shadowRadius: 16,
+              elevation: 8,
+              overflow: 'hidden',
+            }}
+          >
+            {/* Decorative circles */}
+            <View style={{ position: 'absolute', top: -20, right: -20, width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.1)' }} />
+            <View style={{ position: 'absolute', bottom: -40, left: -10, width: 120, height: 120, borderRadius: 60, backgroundColor: 'rgba(255,255,255,0.05)' }} />
 
-          <View style={[styles.chartCard, styles.donutChartCard]}>
-            <View style={styles.chartHeader}>
-              <View style={[styles.chartIcon, { backgroundColor: '#EDE9FE' }]}>
-                <Feather name="pie-chart" size={20} color="#8B5CF6" />
-              </View>
-              <Text style={styles.chartTitle}>État des Offres</Text>
+            <View style={{ flex: 1, marginRight: 16 }}>
+              <Text style={{ color: 'white', fontSize: 22, fontWeight: 'bold', marginBottom: 8 }}>
+                Publier une offre
+              </Text>
+              <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 14, lineHeight: 20 }}>
+                Créez une nouvelle annonce pour trouver vos futurs talents dès maintenant.
+              </Text>
             </View>
-            <View style={styles.donutContainer}>
-              <DonutChart
-                data={donutData}
-                radius={80}
-                strokeWidth={25}
-                centerValue={recruiterJobStats.total}
-              />
-              <View style={styles.legendContainer}>
-                {donutData.map((item, i) => (
-                  <View key={i} style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: item.color }]} />
-                    <Text style={styles.legendLabel}>{item.label}</Text>
-                  </View>
-                ))}
-              </View>
+
+            <View style={{
+              width: 48,
+              height: 48,
+              borderRadius: 24,
+              backgroundColor: 'rgba(255,255,255,0.2)',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <Feather name="plus" size={24} color="white" />
             </View>
-          </View>
+          </TouchableOpacity>
+
+          {/* View Applications Action */}
+          <TouchableOpacity
+            onPress={() => router.push('/recruiter/applications')}
+            activeOpacity={0.9}
+            style={{
+              backgroundColor: Colors.secondary,
+              borderRadius: 24,
+              padding: 24,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              shadowColor: Colors.secondary,
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.3,
+              shadowRadius: 16,
+              elevation: 8,
+              overflow: 'hidden',
+            }}
+          >
+            {/* Decorative circles */}
+            <View style={{ position: 'absolute', top: -20, right: -20, width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.1)' }} />
+            <View style={{ position: 'absolute', bottom: -40, left: -10, width: 120, height: 120, borderRadius: 60, backgroundColor: 'rgba(255,255,255,0.05)' }} />
+
+            <View style={{ flex: 1, marginRight: 16 }}>
+              <Text style={{ color: 'white', fontSize: 22, fontWeight: 'bold', marginBottom: 8 }}>
+                Candidatures
+              </Text>
+              <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 14, lineHeight: 20 }}>
+                Consultez et gérez les candidatures reçues pour vos offres d'emploi.
+              </Text>
+            </View>
+
+            <View style={{
+              width: 48,
+              height: 48,
+              borderRadius: 24,
+              backgroundColor: 'rgba(255,255,255,0.2)',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <Feather name="users" size={24} color="white" />
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* Recent Activity List */}
@@ -325,7 +374,7 @@ export default function DashboardScreen() {
                 <Text style={styles.listSubtitle}>{job.location} • {job.type}</Text>
               </View>
               <View style={{ paddingHorizontal: 12, paddingVertical: 4, backgroundColor: '#F3F4F6', borderRadius: 12 }}>
-                <Text style={{ fontSize: 12, color: '#374151' }}>{new Date(job.createdAt).toLocaleDateString()}</Text>
+                <Text style={{ fontSize: 12, color: '#374151' }}>{new Date(job.createdAt || job.postedDate).toLocaleDateString()}</Text>
               </View>
             </View>
           ))}

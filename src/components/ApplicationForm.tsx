@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import { Application, ApplicationStatus } from '../types';
+import { JobApplication, ApplicationStatus } from '../types/jobApplication';
 import { createApplication } from '../services/jobApplication';
 import { useAuth } from '../hooks/useAuth';
 import { Colors } from '../constants';
@@ -22,7 +22,7 @@ interface ApplicationFormProps {
   recruiterId?: string;
   company: string;
   location: string;
-  onSubmitSuccess?: (application: Application) => void;
+  onSubmitSuccess?: (application: JobApplication) => void;
   onCancel?: () => void;
 }
 

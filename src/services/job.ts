@@ -5,78 +5,7 @@ import { Job, JobSearchParams, JobFilters, JobType } from '@/types/job';
 const JOB_API_BASE_URL = process.env.EXPO_PUBLIC_JOB_API_URL || 'https://api.example.com/jobs';
 
 // Mock data pour le développement (à remplacer par un appel API réel)
-const MOCK_JOBS: Job[] = [
-  {
-    id: '1',
-    title: 'Développeur React Native',
-    company: 'TechCorp',
-    location: 'Paris, France',
-    type: JobType.FULL_TIME,
-    description: 'Nous recherchons un développeur React Native expérimenté pour rejoindre notre équipe mobile.',
-    salary: '50k-70k €',
-    jobUrl: 'https://example.com/job/1',
-    postedDate: new Date().toISOString(),
-    source: 'LinkedIn',
-    remote: true,
-    requirements: ['React Native', 'TypeScript', 'Expo', '3+ ans d\'expérience'],
-  },
-  {
-    id: '2',
-    title: 'Ingénieur Full Stack',
-    company: 'StartupXYZ',
-    location: 'Lyon, France',
-    type: JobType.FULL_TIME,
-    description: 'Poste d\'ingénieur full stack pour développer notre plateforme web et mobile.',
-    salary: '55k-75k €',
-    jobUrl: 'https://example.com/job/2',
-    postedDate: new Date(Date.now() - 86400000).toISOString(),
-    source: 'Indeed',
-    remote: false,
-    requirements: ['React', 'Node.js', 'PostgreSQL', '2+ ans d\'expérience'],
-  },
-  {
-    id: '3',
-    title: 'Stage Développeur Frontend',
-    company: 'DigitalAgency',
-    location: 'Toulouse, France',
-    type: JobType.INTERNSHIP,
-    description: 'Stage de 6 mois pour un développeur frontend motivé.',
-    salary: '800-1000 €/mois',
-    jobUrl: 'https://example.com/job/3',
-    postedDate: new Date(Date.now() - 172800000).toISOString(),
-    source: 'Welcome to the Jungle',
-    remote: false,
-    requirements: ['React', 'JavaScript', 'HTML/CSS'],
-  },
-  {
-    id: '4',
-    title: 'Développeur Backend Python',
-    company: 'DataTech',
-    location: 'Remote',
-    type: JobType.FULL_TIME,
-    description: 'Développeur backend Python pour notre équipe de data engineering.',
-    salary: '60k-80k €',
-    jobUrl: 'https://example.com/job/4',
-    postedDate: new Date(Date.now() - 259200000).toISOString(),
-    source: 'LinkedIn',
-    remote: true,
-    requirements: ['Python', 'Django', 'PostgreSQL', 'Docker', '4+ ans d\'expérience'],
-  },
-  {
-    id: '5',
-    title: 'Designer UX/UI',
-    company: 'CreativeStudio',
-    location: 'Bordeaux, France',
-    type: JobType.FULL_TIME,
-    description: 'Designer UX/UI pour concevoir des interfaces utilisateur modernes.',
-    salary: '45k-60k €',
-    jobUrl: 'https://example.com/job/5',
-    postedDate: new Date(Date.now() - 345600000).toISOString(),
-    source: 'Indeed',
-    remote: true,
-    requirements: ['Figma', 'Design System', 'Prototypage', '3+ ans d\'expérience'],
-  },
-];
+const MOCK_JOBS: Job[] = [];
 
 /**
  * Récupère la liste des offres d'emploi
@@ -134,10 +63,10 @@ export const searchJobs = async (
     // Récupérer aussi les offres de la base de données
     const { getAllJobs } = await import('./jobService');
     const dbJobs = await getAllJobs().catch(() => []);
-    
+
     // Combiner avec les offres mockées
     let allJobs = [...MOCK_JOBS, ...dbJobs];
-    
+
     // Dédupliquer par ID
     const uniqueJobs = allJobs.filter((job, index, self) =>
       index === self.findIndex(j => j.id === job.id)
@@ -152,13 +81,13 @@ export const searchJobs = async (
           const matchesCompany = job.company.toLowerCase().includes(lowerQuery);
           const matchesLocation = job.location.toLowerCase().includes(lowerQuery);
           const matchesDescription = job.description?.toLowerCase().includes(lowerQuery) || false;
-          const matchesRequirements = job.requirements?.some(req => 
+          const matchesRequirements = job.requirements?.some(req =>
             req.toLowerCase().includes(lowerQuery)
           ) || false;
           const matchesSalary = job.salary?.toLowerCase().includes(lowerQuery) || false;
-          
-          return matchesTitle || matchesCompany || matchesLocation || 
-                 matchesDescription || matchesRequirements || matchesSalary;
+
+          return matchesTitle || matchesCompany || matchesLocation ||
+            matchesDescription || matchesRequirements || matchesSalary;
         }
       );
     } else {

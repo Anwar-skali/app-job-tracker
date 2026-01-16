@@ -22,6 +22,8 @@ export interface Job {
   source?: string; // Source de l'annonce (ex: "LinkedIn", "Indeed")
   remote?: boolean; // Télétravail possible
   requirements?: string[]; // Liste des compétences requises
+  benefits?: string[]; // Liste des avantages
+  applicationDeadline?: string; // Date limite de candidature (ISO string)
   recruiterId?: string; // ID du recruteur qui a créé l'offre
   archived?: boolean; // Offre archivée
   createdAt?: string; // Date de création

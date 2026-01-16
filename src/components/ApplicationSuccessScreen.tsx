@@ -1,11 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Application } from '../types';
+import { JobApplication } from '../types/jobApplication';
 import { Colors } from '../constants';
 
 interface ApplicationSuccessScreenProps {
-  application: Application;
+  application: JobApplication;
   jobTitle: string;
 }
 
@@ -37,11 +37,11 @@ export const ApplicationSuccessScreen: React.FC<ApplicationSuccessScreenProps> =
               {application.status?.toUpperCase() || 'PENDING'}
             </Text>
           </View>
-          {application.submittedDate && (
+          {application.applicationDate && (
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Submitted:</Text>
               <Text style={styles.detailValue}>
-                {new Date(application.submittedDate).toLocaleString()}
+                {new Date(application.applicationDate).toLocaleString()}
               </Text>
             </View>
           )}
@@ -55,7 +55,7 @@ export const ApplicationSuccessScreen: React.FC<ApplicationSuccessScreenProps> =
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={styles.primaryButton}
-          onPress={() => router.push('/applications')}
+          onPress={() => router.push('/(tabs)/applications')}
         >
           <Text style={styles.primaryButtonText}>View My Applications</Text>
         </TouchableOpacity>
