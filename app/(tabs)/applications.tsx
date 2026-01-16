@@ -8,8 +8,9 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
+  ScrollView,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import {
@@ -20,6 +21,7 @@ import {
 import { JobApplication, ApplicationFilters, ApplicationStatus, ContractType } from '@/types/jobApplication';
 import { StatusConfig, ContractTypeLabels } from '@/constants';
 import { Feather } from '@expo/vector-icons';
+import { Colors } from '@/constants/colors';
 
 export default function ApplicationsScreen() {
   const router = useRouter();
@@ -37,7 +39,6 @@ export default function ApplicationsScreen() {
   useEffect(() => {
     if (params.success === 'true') {
       setShowSuccess(true);
-      // Cacher le message après 3 secondes
       const timer = setTimeout(() => {
         setShowSuccess(false);
         router.setParams({ success: undefined });
@@ -83,23 +84,29 @@ export default function ApplicationsScreen() {
     setFilteredApplications(filtered);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, event: any) => {
+    event?.stopPropagation();
     if (!user) return;
 
-    // Suppression immédiate sans confirmation "fluide"
-    try {
-      await deleteApplication(id, user.id);
-      loadApplications();
-      // Sur web, on pourrait ajouter un petit toast non bloquant ici si on avait une lib de toast
-    } catch (error) {
-      console.error('Erreur suppression:', error);
-      // En cas d'erreur seulement on affiche une alerte
-      if (Platform.OS === 'web') {
-        window.alert('Impossible de supprimer la candidature');
-      } else {
-        Alert.alert('Erreur', 'Impossible de supprimer la candidature');
-      }
-    }
+    Alert.alert(
+      'Supprimer',
+      'Voulez-vous supprimer cette candidature ?',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteApplication(id, user.id);
+              loadApplications();
+            } catch (error) {
+              Alert.alert('Erreur', 'Impossible de supprimer la candidature');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const renderApplication = ({ item }: { item: JobApplication }) => {
@@ -107,53 +114,76 @@ export default function ApplicationsScreen() {
 
     return (
       <TouchableOpacity
-        className="mb-3 rounded-3xl bg-white p-5 shadow-medium border border-gray-100 active:scale-[0.98]"
+        className="bg-white rounded-3xl mb-4 shadow-sm border border-gray-100 p-5 active:scale-[0.99]"
+        style={{
+          elevation: 2,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.05,
+          shadowRadius: 8,
+        }}
         onPress={() => router.push(`/application/${item.id}` as any)}
-        activeOpacity={0.8}
+        activeOpacity={0.9}
       >
-        <View className="mb-3 flex-row items-start justify-between">
-          <View className="flex-1 mr-3">
-            <Text className="mb-1 text-lg font-bold text-gray-900">{item.title}</Text>
-            <Text className="text-base text-gray-600 font-medium">{item.company}</Text>
+        <View className="flex-row justify-between items-start mb-4">
+          {/* Header: Title & Company */}
+          <View className="flex-1 mr-4">
+            <Text className="text-xl font-bold text-gray-900 leading-tight mb-1">{item.title}</Text>
+            <Text className="text-primary-600 font-semibold">{item.company}</Text>
           </View>
+
+          {/* Status Badge */}
           <View
-            className="rounded-full px-4 py-2 shadow-soft"
-            style={{ backgroundColor: statusConfig.color + '15' }}
+            className="px-3 py-1.5 rounded-full border"
+            style={{
+              backgroundColor: statusConfig.color + '15',
+              borderColor: statusConfig.color + '30'
+            }}
           >
             <Text
-              className="text-xs font-bold"
+              className="text-xs font-bold capitalize"
               style={{ color: statusConfig.color }}
             >
               {statusConfig.label}
             </Text>
           </View>
         </View>
-        <View className="mb-3 flex-row items-center gap-4">
-          <View className="flex-row items-center bg-gray-50 px-3 py-1.5 rounded-full">
-            <Feather name="map-pin" size={14} color="#6B7280" />
-            <Text className="ml-1.5 text-sm text-gray-700 font-medium">{item.location}</Text>
+
+        {/* Metadata Pills */}
+        <View className="flex-row flex-wrap gap-2 mb-4">
+          <View className="flex-row items-center bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
+            <Feather name="map-pin" size={12} color="#6B7280" />
+            <Text className="ml-1.5 text-xs font-medium text-gray-600">{item.location}</Text>
           </View>
-          <View className="flex-row items-center bg-gray-50 px-3 py-1.5 rounded-full">
-            <Feather name="briefcase" size={14} color="#6B7280" />
-            <Text className="ml-1.5 text-sm text-gray-700 font-medium">
+          <View className="flex-row items-center bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
+            <Feather name="briefcase" size={12} color="#6B7280" />
+            <Text className="ml-1.5 text-xs font-medium text-gray-600">
               {ContractTypeLabels[item.contractType]}
             </Text>
           </View>
-        </View>
-        <View className="flex-row items-center justify-between pt-3 border-t border-gray-100">
-          <View className="flex-row items-center">
-            <Feather name="calendar" size={14} color="#9CA3AF" />
-            <Text className="ml-1.5 text-xs text-gray-500 font-medium">
-              {new Date(item.applicationDate).toLocaleDateString('fr-FR')}
+          <View className="flex-row items-center bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
+            <Feather name="calendar" size={12} color="#6B7280" />
+            <Text className="ml-1.5 text-xs font-medium text-gray-600">
+              {new Date(item.applicationDate).toLocaleDateString()}
             </Text>
           </View>
+        </View>
+
+        {/* Footer Actions */}
+        <View className="flex-row justify-between items-center pt-4 border-t border-gray-100">
+          <Text className="text-xs text-gray-400 font-medium">
+            Candidaté il y a {Math.floor((new Date().getTime() - new Date(item.applicationDate).getTime()) / (1000 * 3600 * 24))} jours
+          </Text>
+
           <TouchableOpacity
-            className="p-2 rounded-full bg-red-50 active:bg-red-100"
-            onPress={() => handleDelete(item.id)}
+            onPress={(e) => handleDelete(item.id, e)}
+            className="p-2 -mr-2 rounded-full active:bg-red-50"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Feather name="trash-2" size={16} color="#EF4444" />
           </TouchableOpacity>
         </View>
+
       </TouchableOpacity>
     );
   };
@@ -161,109 +191,130 @@ export default function ApplicationsScreen() {
   if (loading) {
     return (
       <View className="flex-1 items-center justify-center bg-gray-50">
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
 
   return (
     <View className="flex-1 bg-gray-50">
+      <Stack.Screen options={{
+        title: 'Candidatures',
+        headerShadowVisible: false,
+        headerStyle: { backgroundColor: '#F9FAFB' },
+      }} />
+
       {showSuccess && (
-        <View className="bg-gradient-to-r from-success-500 to-success-600 px-4 py-4 flex-row items-center justify-center shadow-lg">
-          <View className="h-8 w-8 rounded-full bg-white/20 items-center justify-center mr-2">
-            <Feather name="check-circle" size={18} color="#fff" />
+        <View className="absolute top-4 left-4 right-4 z-50 bg-green-500 rounded-2xl px-5 py-4 flex-row items-center shadow-lg">
+          <View className="h-8 w-8 rounded-full bg-white/20 items-center justify-center mr-3">
+            <Feather name="check" size={20} color="#fff" />
           </View>
-          <Text className="text-white font-bold text-base">Candidature ajoutée avec succès !</Text>
+          <Text className="text-white font-bold text-base flex-1">Candidature envoyée !</Text>
         </View>
       )}
-      <View className="bg-white px-4 py-4 border-b border-gray-100 shadow-soft">
-        {isRecruiter && (
-          <View className="mb-4 bg-blue-50 p-4 rounded-xl border border-blue-100 flex-row items-start">
-            <Feather name="info" size={20} color="#2563EB" style={{ marginTop: 2 }} />
-            <View className="ml-3 flex-1">
-              <Text className="text-blue-800 font-bold text-sm">Vue Candidat</Text>
-              <Text className="text-blue-600 text-sm mt-1">
-                Cette page affiche vos candidatures personnelles. Pour voir les candidatures reçues pour vos offres, allez dans le menu Recruteur.
-              </Text>
-              <TouchableOpacity
-                className="mt-2 bg-blue-100 self-start px-3 py-1.5 rounded-lg"
-                onPress={() => router.push('/recruiter/applications')}
-              >
-                <Text className="text-blue-700 font-semibold text-xs">Voir les candidatures reçues</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-        <View className="relative">
-          <View className="absolute left-4 top-4 z-10">
-            <Feather name="search" size={20} color="#9CA3AF" />
-          </View>
-          <TextInput
-            className="rounded-xl border-2 border-gray-200 bg-gray-50 pl-10 pr-4 py-3 text-base text-gray-900"
-            placeholder="Rechercher par titre ou entreprise..."
-            placeholderTextColor="#9CA3AF"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
-      </View>
 
-      <View className="flex-row flex-wrap gap-2 px-4 py-3 bg-white border-b border-gray-200">
-        <TouchableOpacity
-          className={`rounded-full px-4 py-2 border-2 ${!filterStatus
-            ? 'bg-primary-500 border-primary-500'
-            : 'bg-white border-gray-200'
-            }`}
-          onPress={() => setFilterStatus(undefined)}
+      {/* Recruiter Notice Box */}
+      {isRecruiter && (
+        <View className="mx-5 mt-4 mb-2 bg-blue-50 p-4 rounded-2xl border border-blue-100 flex-row items-start z-10">
+          <Feather name="info" size={20} color={Colors.primary} style={{ marginTop: 2, marginRight: 12 }} />
+          <View className="flex-1">
+            <Text className="text-blue-900 font-bold text-sm mb-1">Mode Candidat</Text>
+            <Text className="text-blue-700 text-xs leading-5">
+              Vous consultez vos propres candidatures.
+            </Text>
+            <TouchableOpacity
+              className="mt-2 bg-white self-start px-3 py-1.5 rounded-lg border border-blue-200 shadow-sm"
+              onPress={() => router.push('/recruiter/applications')}
+            >
+              <Text className="text-primary-600 font-bold text-xs">Gérer mes offres</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* Search & Filter Header */}
+      <View className="bg-gray-50 pb-2 z-10">
+        <View className="px-5 py-2">
+          <View className="flex-row items-center bg-white rounded-2xl px-4 py-3 border border-gray-200 shadow-sm">
+            <Feather name="search" size={20} color="#9CA3AF" className="mr-3" />
+            <TextInput
+              className="flex-1 text-base text-gray-900"
+              placeholder="Rechercher..."
+              placeholderTextColor="#9CA3AF"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Feather name="x-circle" size={18} color="#9CA3AF" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 10, gap: 8 }}
         >
-          <Text
-            className={`text-sm font-medium ${!filterStatus ? 'text-white' : 'text-gray-700'
-              }`}
-          >
-            Tous
-          </Text>
-        </TouchableOpacity>
-        {Object.values(ApplicationStatus).map(status => (
           <TouchableOpacity
-            key={status}
-            className={`rounded-full px-4 py-2 border-2 ${filterStatus === status
-              ? 'bg-primary-500 border-primary-500'
+            className={`px-4 py-2 rounded-full border ${!filterStatus
+              ? 'bg-gray-900 border-gray-900'
               : 'bg-white border-gray-200'
               }`}
-            onPress={() => setFilterStatus(filterStatus === status ? undefined : status)}
+            onPress={() => setFilterStatus(undefined)}
           >
-            <Text
-              className={`text-sm font-medium ${filterStatus === status ? 'text-white' : 'text-gray-700'
-                }`}
-            >
-              {StatusConfig[status].label}
+            <Text className={`text-sm font-semibold ${!filterStatus ? 'text-white' : 'text-gray-600'}`}>
+              Tout
             </Text>
           </TouchableOpacity>
-        ))}
+          {Object.values(ApplicationStatus).map(status => (
+            <TouchableOpacity
+              key={status}
+              className={`px-4 py-2 rounded-full border ${filterStatus === status
+                ? 'bg-gray-900 border-gray-900' // Using darker active state for "chip" look
+                : 'bg-white border-gray-200'
+                }`}
+              onPress={() => setFilterStatus(filterStatus === status ? undefined : status)}
+            >
+              <Text className={`text-sm font-semibold ${filterStatus === status ? 'text-white' : 'text-gray-600'}`}>
+                {StatusConfig[status].label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
 
       <FlatList
         data={filteredApplications}
         renderItem={renderApplication}
         keyExtractor={item => item.id}
-        contentContainerClassName="p-4"
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          <View className="py-12 items-center">
-            <Feather name="inbox" size={48} color="#9CA3AF" />
-            <Text className="mt-4 text-base text-gray-500">Aucune candidature trouvée</Text>
+          <View className="items-center justify-center pt-20 px-8">
+            <View className="h-24 w-24 bg-gray-100 rounded-full items-center justify-center mb-6">
+              <Feather name="inbox" size={40} color="#9CA3AF" />
+            </View>
+            <Text className="text-xl font-bold text-gray-900 mb-2 text-center">
+              {searchQuery || filterStatus ? 'Aucun résultat' : 'Aucune candidature'}
+            </Text>
+            <Text className="text-gray-500 text-center mb-8 leading-6">
+              {searchQuery || filterStatus
+                ? 'Essayez de modifier vos filtres ou votre recherche.'
+                : 'Vous n\'avez pas encore postulé à une offre. Explorez les opportunités !'}
+            </Text>
+            {!searchQuery && !filterStatus && (
+              <TouchableOpacity
+                className="bg-primary-500 px-8 py-4 rounded-2xl shadow-lg shadow-primary-500/30 w-full"
+                onPress={() => router.push('/(tabs)/jobs' as any)}
+              >
+                <Text className="text-white font-bold text-lg text-center">Explorer les offres</Text>
+              </TouchableOpacity>
+            )}
           </View>
         }
       />
-
-      {canCreateApplication && (
-        <TouchableOpacity
-          className="absolute right-4 bottom-4 h-14 w-14 items-center justify-center rounded-full bg-primary-500 shadow-lg shadow-primary-500/30"
-          onPress={() => router.push('/application/new' as any)}
-          activeOpacity={0.8}
-        >
-          <Feather name="plus" size={24} color="#fff" />
-        </TouchableOpacity>
-      )}
     </View>
   );
 }

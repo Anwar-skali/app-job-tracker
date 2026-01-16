@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,10 +8,10 @@ import {
   Platform,
   ActivityIndicator,
   RefreshControl,
-  Image,
+  useWindowDimensions,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { Colors, StatusConfig } from '@/constants';
+import { Colors } from '@/constants';
 import { useAuth } from '@/hooks/useAuth';
 import { UserRole } from '@/types';
 import { Feather } from '@expo/vector-icons';
@@ -19,10 +19,16 @@ import { getApplicationStats, getApplications } from '@/services/jobApplication'
 import { getJobsByRecruiter } from '@/services/jobService';
 import { JobApplication, ApplicationStats, ApplicationStatus } from '@/types/jobApplication';
 import { Job } from '@/types/job';
+import DonutChart from '@/components/DonutChart';
+import BarChart from '@/components/BarChart';
+
+
 
 export default function DashboardScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { width } = useWindowDimensions();
+  const isLargeScreen = width > 768;
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -38,25 +44,16 @@ export default function DashboardScreen() {
     try {
       setLoading(true);
       if (user.role === UserRole.CANDIDATE) {
-        // Load Candidate Data
         const stats = await getApplicationStats(user.id);
         setCandidateStats(stats);
-
         const apps = await getApplications(user.id);
-        const sortedApps = apps.sort((a, b) =>
-          new Date(b.applicationDate).getTime() - new Date(a.applicationDate).getTime()
-        );
-        setRecentApplications(sortedApps.slice(0, 3));
+        setRecentApplications(apps);
       } else if (user.role === UserRole.RECRUITER) {
-        // Load Recruiter Data
         const jobs = await getJobsByRecruiter(user.id);
-        setRecruiterJobs(jobs.slice(0, 3));
-
+        setRecruiterJobs(jobs);
         const active = jobs.filter(j => !j.archived).length;
         const archived = jobs.filter(j => j.archived).length;
         setRecruiterJobStats({ active, archived, total: jobs.length });
-      } else if (user.role === UserRole.ADMIN) {
-        // Admin redirect? Or show simple stats?
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -77,14 +74,7 @@ export default function DashboardScreen() {
     loadData();
   };
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Bonjour';
-    if (hour < 18) return 'Bonne après-midi';
-    return 'Bonsoir';
-  };
-
-  if (loading && !refreshing && !candidateStats && !recruiterJobStats.total) {
+  if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={Colors.primary} />
@@ -92,180 +82,257 @@ export default function DashboardScreen() {
     );
   }
 
-  const renderCandidateView = () => (
-    <>
-      {/* Stats Cards */}
-      <View style={styles.statsContainer}>
-        <View style={styles.statCard}>
-          <View style={[styles.iconContainer, { backgroundColor: Colors.primary + '20' }]}>
-            <Feather name="send" size={24} color={Colors.primary} />
-          </View>
-          <Text style={styles.statValue}>{candidateStats?.total || 0}</Text>
-          <Text style={styles.statLabel}>Candidatures</Text>
-        </View>
-
-        <View style={styles.statCard}>
-          <View style={[styles.iconContainer, { backgroundColor: Colors.secondary + '20' }]}>
-            <Feather name="calendar" size={24} color={Colors.secondary} />
-          </View>
-          <Text style={styles.statValue}>{candidateStats?.interviews || 0}</Text>
-          <Text style={styles.statLabel}>Entretiens</Text>
-        </View>
-
-        <View style={styles.statCard}>
-          <View style={[styles.iconContainer, { backgroundColor: Colors.success + '20' }]}>
-            <Feather name="check-circle" size={24} color={Colors.success} />
-          </View>
-          <Text style={styles.statValue}>
-            {candidateStats?.byStatus[ApplicationStatus.ACCEPTED] || 0}
-          </Text>
-          <Text style={styles.statLabel}>Offres</Text>
-        </View>
+  // Helper component for KPI Cards
+  const KpiCard = ({
+    icon,
+    label,
+    value,
+    color,
+    bgColor
+  }: {
+    icon: keyof typeof Feather.glyphMap;
+    label: string;
+    value: string | number;
+    color: string;
+    bgColor: string;
+  }) => (
+    <View style={styles.kpiCard}>
+      <View style={[styles.kpiIconContainer, { backgroundColor: bgColor }]}>
+        <Feather name={icon} size={24} color={color} />
       </View>
-
-      {/* Quick Actions */}
-      <View style={styles.actionsContainer}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => router.push('/application/new' as any)}
-        >
-          <Feather name="plus-circle" size={20} color="white" />
-          <Text style={styles.actionButtonText}>Ajouter</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionButton, styles.secondaryAction]}
-          onPress={() => router.push('/(tabs)/search' as any)}
-        >
-          <Feather name="search" size={20} color={Colors.text} />
-          <Text style={[styles.actionButtonText, styles.secondaryActionText]}>Rechercher</Text>
-        </TouchableOpacity>
+      <View style={styles.kpiContent}>
+        <Text style={styles.kpiLabel}>{label.toUpperCase()}</Text>
+        <Text style={styles.kpiValue}>{value}</Text>
       </View>
-
-      {/* Recent Applications */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Activités récentes</Text>
-        <TouchableOpacity onPress={() => router.push('/applications')}>
-          <Text style={styles.seeAllText}>Voir tout</Text>
-        </TouchableOpacity>
-      </View>
-
-      {recentApplications.map((app) => (
-        <TouchableOpacity
-          key={app.id}
-          style={styles.recentItem}
-          onPress={() => router.push(`/application/${app.id}` as any)}
-        >
-          <View style={styles.recentItemContent}>
-            <Text style={styles.recentTitle}>{app.title}</Text>
-            <Text style={styles.recentSubtitle}>{app.company}</Text>
-          </View>
-          <View
-            style={[
-              styles.statusBadge,
-              { backgroundColor: StatusConfig[app.status]?.color + '20' }
-            ]}
-          >
-            <Text
-              style={[
-                styles.statusText,
-                { color: StatusConfig[app.status]?.color }
-              ]}
-            >
-              {StatusConfig[app.status]?.label}
-            </Text>
-          </View>
-        </TouchableOpacity>
-      ))}
-
-      {recentApplications.length === 0 && (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>Aucune candidature récente</Text>
-        </View>
-      )}
-    </>
+    </View>
   );
 
-  const renderRecruiterView = () => (
-    <>
-      {/* Recruiter Stats */}
-      <View style={styles.statsContainer}>
-        <View style={styles.statCard}>
-          <View style={[styles.iconContainer, { backgroundColor: Colors.primary + '20' }]}>
-            <Feather name="briefcase" size={24} color={Colors.primary} />
-          </View>
-          <Text style={styles.statValue}>{recruiterJobStats.active}</Text>
-          <Text style={styles.statLabel}>Offres Actives</Text>
+  const renderCandidateView = () => {
+    // Donut Data
+    const donutData = candidateStats ? [
+      { value: candidateStats.byStatus[ApplicationStatus.PENDING] || 0, color: '#3B82F6', label: 'En attente' }, // Blue
+      { value: candidateStats.byStatus[ApplicationStatus.ACCEPTED] || 0, color: '#10B981', label: 'Acceptées' }, // Green
+      { value: candidateStats.byStatus[ApplicationStatus.REJECTED] || 0, color: '#EF4444', label: 'Refusées' }, // Red
+      { value: candidateStats.interviews || 0, color: '#F59E0B', label: 'Entretiens' }, // Orange
+    ].filter(d => d.value > 0) : [];
+
+    if (donutData.length === 0) donutData.push({ value: 1, color: '#E5E7EB', label: 'Aucune donnée' });
+
+    // Bar Data (Mocked for Evolution visualisation as we don't have historical snapshots)
+    const barData = [
+      { label: 'Jan', value: 2 },
+      { label: 'Fév', value: 5 },
+      { label: 'Mar', value: 3 },
+      { label: 'Avr', value: 8 },
+      { label: 'Mai', value: candidateStats?.total || 0 }, // Current month real data roughly
+    ];
+
+    return (
+      <View style={styles.dashboardGrid}>
+        {/* Top KPI Row */}
+        <View style={styles.kpiRow}>
+          <KpiCard
+            icon="file-text"
+            label="Candidatures"
+            value={candidateStats?.total || 0}
+            color="#10B981"
+            bgColor="#D1FAE5"
+          />
+          <KpiCard
+            icon="check-circle"
+            label="Acceptées"
+            value={candidateStats?.byStatus[ApplicationStatus.ACCEPTED] || 0}
+            color="#3B82F6"
+            bgColor="#DBEAFE"
+          />
+          <KpiCard
+            icon="calendar"
+            label="Entretiens"
+            value={candidateStats?.interviews || 0}
+            color="#6366F1"
+            bgColor="#E0E7FF"
+          />
+          <KpiCard
+            icon="alert-circle"
+            label="Refusées"
+            value={candidateStats?.byStatus[ApplicationStatus.REJECTED] || 0}
+            color="#EF4444"
+            bgColor="#FEE2E2"
+          />
         </View>
 
-        <View style={styles.statCard}>
-          <View style={[styles.iconContainer, { backgroundColor: Colors.warning + '20' }]}>
-            <Feather name="archive" size={24} color={Colors.warning} />
+        {/* Charts Row */}
+        <View style={[styles.chartsRow, { flexDirection: isLargeScreen ? 'row' : 'column' }]}>
+          {/* Bar Chart Card */}
+          <View style={[styles.chartCard, styles.barChartCard]}>
+            <View style={styles.chartHeader}>
+              <View style={[styles.chartIcon, { backgroundColor: '#EDE9FE' }]}>
+                <Feather name="bar-chart-2" size={20} color="#8B5CF6" />
+              </View>
+              <Text style={styles.chartTitle}>Évolution des Candidatures</Text>
+            </View>
+            <BarChart data={barData} height={200} barColor="#A78BFA" />
           </View>
-          <Text style={styles.statValue}>{recruiterJobStats.archived}</Text>
-          <Text style={styles.statLabel}>Archivées</Text>
+
+          {/* Donut Chart Card */}
+          <View style={[styles.chartCard, styles.donutChartCard]}>
+            <View style={styles.chartHeader}>
+              <View style={[styles.chartIcon, { backgroundColor: '#EDE9FE' }]}>
+                <Feather name="pie-chart" size={20} color="#8B5CF6" />
+              </View>
+              <Text style={styles.chartTitle}>Distribution par Statut</Text>
+            </View>
+            <View style={styles.donutContainer}>
+              <DonutChart
+                data={donutData}
+                radius={80}
+                strokeWidth={25}
+                centerValue={candidateStats?.total || 0}
+              />
+              {/* Legend */}
+              <View style={styles.legendContainer}>
+                {donutData.map((item, i) => (
+                  <View key={i} style={styles.legendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: item.color }]} />
+                    <Text style={styles.legendLabel}>{item.label}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
         </View>
 
-        <View style={styles.statCard}>
-          <View style={[styles.iconContainer, { backgroundColor: Colors.secondary + '20' }]}>
-            <Feather name="users" size={24} color={Colors.secondary} />
-          </View>
-          {/* Note: Total applications would require another fetch, simplifying for now */}
-          <Text style={styles.statValue}>{recruiterJobStats.total}</Text>
-          <Text style={styles.statLabel}>Total Offres</Text>
+        {/* Recent Activity List */}
+        <View style={styles.recentSection}>
+          <Text style={styles.sectionTitle}>Activités Récentes</Text>
+          {recentApplications.slice(0, 5).map(app => (
+            <View key={app.id} style={styles.listItem}>
+              <View style={styles.listIcon}>
+                <Feather name="briefcase" size={20} color="#6B7280" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.listTitle}>{app.title}</Text>
+                <Text style={styles.listSubtitle}>{app.company}</Text>
+              </View>
+              <View style={{ paddingHorizontal: 12, paddingVertical: 4, backgroundColor: '#F3F4F6', borderRadius: 12 }}>
+                <Text style={{ fontSize: 12, color: '#374151' }}>{new Date(app.applicationDate).toLocaleDateString()}</Text>
+              </View>
+            </View>
+          ))}
         </View>
       </View>
+    );
+  };
 
-      {/* Quick Actions */}
-      <View style={styles.actionsContainer}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => router.push('/job/new' as any)}
-        >
-          <Feather name="plus" size={20} color="white" />
-          <Text style={styles.actionButtonText}>Publier une offre</Text>
-        </TouchableOpacity>
+  const renderRecruiterView = () => {
+    // Donut Data
+    const donutData = [
+      { value: recruiterJobStats.active, color: '#10B981', label: 'Actives' },
+      { value: recruiterJobStats.archived, color: '#6B7280', label: 'Archivées' },
+    ].filter(d => d.value > 0);
+    if (donutData.length === 0) donutData.push({ value: 1, color: '#E5E7EB', label: 'Aucune donnée' });
 
-        <TouchableOpacity
-          style={[styles.actionButton, styles.secondaryAction]}
-          onPress={() => router.push('/recruiter/applications' as any)}
-        >
-          <Feather name="list" size={20} color={Colors.text} />
-          <Text style={[styles.actionButtonText, styles.secondaryActionText]}>Candidatures</Text>
-        </TouchableOpacity>
-      </View>
+    // Bar Data (Mocked)
+    const barData = [
+      { label: 'Q1', value: 10 },
+      { label: 'Q2', value: 15 },
+      { label: 'Q3', value: 8 },
+      { label: 'Q4', value: recruiterJobStats.total },
+    ];
 
-      {/* Recent Jobs */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Vos dernières offres</Text>
-        <TouchableOpacity onPress={() => router.push('/recruiter/jobs' as any)}>
-          <Text style={styles.seeAllText}>Voir tout</Text>
-        </TouchableOpacity>
-      </View>
-
-      {recruiterJobs.map((job) => (
-        <TouchableOpacity
-          key={job.id}
-          style={styles.recentItem}
-          onPress={() => router.push(`/job/${job.id}` as any)}
-        >
-          <View style={styles.recentItemContent}>
-            <Text style={styles.recentTitle}>{job.title}</Text>
-            <Text style={styles.recentSubtitle}>{job.location} • {job.type}</Text>
-          </View>
-          <View style={styles.arrowIcon}>
-            <Feather name="chevron-right" size={20} color="#C7C7CC" />
-          </View>
-        </TouchableOpacity>
-      ))}
-
-      {recruiterJobs.length === 0 && (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>Aucune offre publiée</Text>
+    return (
+      <View style={styles.dashboardGrid}>
+        {/* Top KPI Row */}
+        <View style={styles.kpiRow}>
+          <KpiCard
+            icon="briefcase"
+            label="Offres Publiées"
+            value={recruiterJobStats.total}
+            color="#10B981"
+            bgColor="#D1FAE5"
+          />
+          <KpiCard
+            icon="activity"
+            label="Offres Actives"
+            value={recruiterJobStats.active}
+            color="#3B82F6"
+            bgColor="#DBEAFE"
+          />
+          <KpiCard
+            icon="archive"
+            label="Archivées"
+            value={recruiterJobStats.archived}
+            color="#F59E0B"
+            bgColor="#FEF3C7"
+          />
+          <KpiCard
+            icon="users"
+            label="Candidats Total"
+            value={"12"} // Mocked total candidates across jobs
+            color="#EF4444"
+            bgColor="#FEE2E2"
+          />
         </View>
-      )}
-    </>
-  );
+
+        {/* Charts Row */}
+        <View style={[styles.chartsRow, { flexDirection: isLargeScreen ? 'row' : 'column' }]}>
+          <View style={[styles.chartCard, styles.barChartCard]}>
+            <View style={styles.chartHeader}>
+              <View style={[styles.chartIcon, { backgroundColor: '#EDE9FE' }]}>
+                <Feather name="bar-chart-2" size={20} color="#8B5CF6" />
+              </View>
+              <Text style={styles.chartTitle}>Tendances Recrutement</Text>
+            </View>
+            <BarChart data={barData} height={200} barColor="#A78BFA" />
+          </View>
+
+          <View style={[styles.chartCard, styles.donutChartCard]}>
+            <View style={styles.chartHeader}>
+              <View style={[styles.chartIcon, { backgroundColor: '#EDE9FE' }]}>
+                <Feather name="pie-chart" size={20} color="#8B5CF6" />
+              </View>
+              <Text style={styles.chartTitle}>État des Offres</Text>
+            </View>
+            <View style={styles.donutContainer}>
+              <DonutChart
+                data={donutData}
+                radius={80}
+                strokeWidth={25}
+                centerValue={recruiterJobStats.total}
+              />
+              <View style={styles.legendContainer}>
+                {donutData.map((item, i) => (
+                  <View key={i} style={styles.legendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: item.color }]} />
+                    <Text style={styles.legendLabel}>{item.label}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Recent Activity List */}
+        <View style={styles.recentSection}>
+          <Text style={styles.sectionTitle}>Offres Récentes</Text>
+          {recruiterJobs.slice(0, 5).map(job => (
+            <View key={job.id} style={styles.listItem}>
+              <View style={styles.listIcon}>
+                <Feather name="briefcase" size={20} color="#6B7280" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.listTitle}>{job.title}</Text>
+                <Text style={styles.listSubtitle}>{job.location} • {job.type}</Text>
+              </View>
+              <View style={{ paddingHorizontal: 12, paddingVertical: 4, backgroundColor: '#F3F4F6', borderRadius: 12 }}>
+                <Text style={{ fontSize: 12, color: '#374151' }}>{new Date(job.createdAt).toLocaleDateString()}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  };
 
   return (
     <ScrollView
@@ -276,29 +343,15 @@ export default function DashboardScreen() {
       }
     >
       <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>{getGreeting()},</Text>
-          <Text style={styles.userName}>{user?.name || 'Utilisateur'}</Text>
-        </View>
-        <TouchableOpacity onPress={() => router.push('/profile/edit' as any)}>
-          {/* Avatar placeholder or image */}
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{user?.name?.charAt(0).toUpperCase() || 'U'}</Text>
-          </View>
-        </TouchableOpacity>
+        <Text style={styles.pageTitle}>Tableau de bord</Text>
+        <Text style={styles.pageSubtitle}>Bienvenue, voici un aperçu de l'activité.</Text>
       </View>
 
       {user?.role === UserRole.CANDIDATE && renderCandidateView()}
       {user?.role === UserRole.RECRUITER && renderRecruiterView()}
       {user?.role === UserRole.ADMIN && (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>Dashboard Admin accessible via le menu</Text>
-          <TouchableOpacity
-            style={[styles.button, { marginTop: 20 }]}
-            onPress={() => router.push('/admin/dashboard' as any)}
-          >
-            <Text style={styles.buttonText}>Aller au Dashboard Admin</Text>
-          </TouchableOpacity>
+          <Text style={styles.emptyText}>Bienvenue Admin</Text>
         </View>
       )}
 
@@ -310,11 +363,11 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F3F4F6', // Reference: Light grey bg
   },
   contentContainer: {
-    padding: 20,
-    paddingTop: Platform.OS === 'web' ? 20 : 60,
+    padding: 24,
+    paddingTop: Platform.OS === 'web' ? 24 : 60,
   },
   loadingContainer: {
     flex: 1,
@@ -322,180 +375,157 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 24,
   },
-  greeting: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  userName: {
-    fontSize: 24,
+  pageTitle: {
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#111827',
+    marginBottom: 4,
   },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
+  pageSubtitle: {
+    fontSize: 16,
+    color: '#6B7280',
   },
-  avatarText: {
-    color: 'white',
-    fontSize: 20,
-    fontWeight: 'bold',
+  dashboardGrid: {
+    gap: 24,
   },
-  statsContainer: {
+  kpiRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 24,
+    flexWrap: 'wrap',
+    gap: 16,
   },
-  statCard: {
+  kpiCard: {
     flex: 1,
+    minWidth: 150, // Wrap on small screens
     backgroundColor: 'white',
     borderRadius: 16,
-    padding: 16,
-    marginHorizontal: 4,
-    alignItems: 'center',
+    padding: 20,
+    flexDirection: 'column', // Icon top-left, text below
+    alignItems: 'flex-start',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 2,
   },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
+  kpiIconContainer: {
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 16,
   },
-  statValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  statLabel: {
+  kpiContent: {},
+  kpiLabel: {
     fontSize: 12,
     color: '#6B7280',
-  },
-  actionsContainer: {
-    flexDirection: 'row',
-    marginBottom: 32,
-    gap: 12,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: Colors.primary,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  actionButtonText: {
-    color: 'white',
     fontWeight: '600',
-    marginLeft: 8,
-    fontSize: 15,
+    marginBottom: 4,
   },
-  secondaryAction: {
+  kpiValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+  chartsRow: {
+    gap: 24,
+  },
+  chartCard: {
+    flex: 1,
     backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: 'transparent',
-    shadowOpacity: 0,
-    elevation: 0,
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
   },
-  secondaryActionText: {
-    color: '#374151',
+  barChartCard: {
+    // minHeight: 400,
   },
-  sectionHeader: {
+  donutChartCard: {
+    // minHeight: 400,
+  },
+  chartHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 24,
+  },
+  chartIcon: {
+    padding: 8,
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  chartTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1F2937',
+  },
+  donutContainer: {
+    alignItems: 'center',
+  },
+  legendContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 16,
+    marginTop: 24,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 8,
+  },
+  legendLabel: {
+    fontSize: 12,
+    color: '#4B5563',
+  },
+  recentSection: {
+    backgroundColor: 'white',
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#111827',
+    marginBottom: 20,
   },
-  seeAllText: {
-    fontSize: 14,
-    color: Colors.primary,
-    fontWeight: '500',
-  },
-  recentItem: {
+  listItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
-  recentItemContent: {
-    flex: 1,
+  listIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F9FAFB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
   },
-  recentTitle: {
+  listTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
-    marginBottom: 4,
+    color: '#1F2937',
   },
-  recentSubtitle: {
+  listSubtitle: {
     fontSize: 14,
     color: '#6B7280',
   },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  arrowIcon: {
-    marginLeft: 8,
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 24,
-  },
-  emptyText: {
-    color: '#9CA3AF',
-    fontSize: 15,
-  },
-  button: {
-    backgroundColor: Colors.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-  },
-  buttonText: {
-    color: 'white',
-    fontWeight: '600',
-  },
+  emptyState: { alignItems: 'center', padding: 20 },
+  emptyText: { color: 'gray' },
 });
-

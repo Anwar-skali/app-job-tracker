@@ -7,6 +7,8 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { useRouter, useFocusEffect, Stack } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
@@ -50,10 +52,14 @@ export default function RecruiterJobsScreen() {
         })
       );
       // Filtrer selon showArchived
-      const filtered = showArchived 
-        ? jobsWithStats 
+      const filtered = showArchived
+        ? jobsWithStats
         : jobsWithStats.filter(job => !job.archived);
-      setJobs(filtered);
+
+      // Sort: Most recent first
+      const sorted = filtered.sort((a, b) => new Date(b.postedDate).getTime() - new Date(a.postedDate).getTime());
+
+      setJobs(sorted);
     } catch (error) {
       console.error('Error loading recruiter jobs:', error);
       Alert.alert('Erreur', 'Impossible de charger les offres.');
@@ -61,7 +67,7 @@ export default function RecruiterJobsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user?.id]);
+  }, [user?.id, showArchived]);
 
   useFocusEffect(
     useCallback(() => {
@@ -82,39 +88,24 @@ export default function RecruiterJobsScreen() {
     event?.stopPropagation();
     if (!user) return;
 
-    // Vérifier si l'offre a des candidatures
     const hasApps = await hasApplications(job.id);
-    
+
     if (hasApps) {
-      Alert.alert(
-        'Impossible de supprimer',
-        'Cette offre a des candidatures en cours. Vous ne pouvez pas la supprimer.',
-        [{ text: 'OK' }]
-      );
+      Alert.alert('Impossible de supprimer', 'Cette offre a des candidatures en cours.');
       return;
     }
 
     Alert.alert(
-      'Supprimer l\'offre',
-      `Êtes-vous sûr de vouloir supprimer l'offre "${job.title}" ? Cette action est irréversible.`,
+      'Supprimer',
+      `Supprimer "${job.title}" ?`,
       [
         { text: 'Annuler', style: 'cancel' },
         {
           text: 'Supprimer',
           style: 'destructive',
           onPress: async () => {
-            try {
-              const success = await deleteJob(job.id, user.id);
-              if (success) {
-                Alert.alert('Succès', 'Offre supprimée avec succès');
-                loadJobs(); // Recharger la liste
-              } else {
-                Alert.alert('Erreur', 'Impossible de supprimer l\'offre');
-              }
-            } catch (error) {
-              console.error('Error deleting job:', error);
-              Alert.alert('Erreur', 'Une erreur est survenue lors de la suppression');
-            }
+            await deleteJob(job.id, user.id);
+            loadJobs();
           },
         },
       ]
@@ -124,93 +115,109 @@ export default function RecruiterJobsScreen() {
   const handleArchive = async (job: Job, event: any) => {
     event?.stopPropagation();
     if (!user) return;
-
-    const action = job.archived ? 'désarchiver' : 'archiver';
-    Alert.alert(
-      `${action.charAt(0).toUpperCase() + action.slice(1)} l'offre`,
-      `Êtes-vous sûr de vouloir ${action} l'offre "${job.title}" ?`,
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: action.charAt(0).toUpperCase() + action.slice(1),
-          onPress: async () => {
-            try {
-              const success = await toggleJobArchive(job.id, user.id, !job.archived);
-              if (success) {
-                Alert.alert('Succès', `Offre ${action}ée avec succès`);
-                loadJobs();
-              } else {
-                Alert.alert('Erreur', `Impossible de ${action} l'offre`);
-              }
-            } catch (error) {
-              console.error('Error toggling archive:', error);
-              Alert.alert('Erreur', 'Une erreur est survenue');
-            }
-          },
-        },
-      ]
-    );
+    await toggleJobArchive(job.id, user.id, !job.archived);
+    loadJobs();
   };
 
   const renderJobItem = ({ item }: { item: Job & { applicationCount?: number } }) => (
     <TouchableOpacity
-      className="bg-white p-5 rounded-3xl mb-3 shadow-medium border border-gray-100 active:scale-[0.98]"
+      className={`bg-white rounded-3xl mb-4 shadow-sm border ${item.archived ? 'border-amber-200 bg-amber-50/30' : 'border-gray-100'
+        } active:scale-[0.99]`}
       onPress={() => handleJobPress(item)}
-      activeOpacity={0.8}
+      activeOpacity={0.9}
+      style={{
+        elevation: 2,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+      }}
     >
-      <View className="flex-row justify-between items-start mb-3">
-        <View className="flex-1 mr-3">
-          <Text className="font-bold text-gray-900 text-base mb-1.5">{item.title}</Text>
-          <Text className="text-gray-600 text-sm font-medium mb-2">{item.company}</Text>
-          <View className="flex-row items-center bg-gray-50 px-3 py-1.5 rounded-full self-start">
-            <Feather name="map-pin" size={14} color="#6B7280" />
-            <Text className="text-gray-600 text-xs ml-1.5 font-medium">{item.location}</Text>
+      <View className="p-5">
+        <View className="flex-row justify-between items-start mb-4">
+          <View className="flex-1 mr-4">
+            <View className="flex-row items-center mb-1">
+              {item.archived && (
+                <View className="bg-amber-100 px-2 py-0.5 rounded-md mr-2">
+                  <Text className="text-amber-700 text-[10px] font-bold uppercase tracking-wider">Archivé</Text>
+                </View>
+              )}
+              <Text className="text-gray-500 text-xs font-semibold uppercase tracking-wide">
+                {new Date(item.postedDate).toLocaleDateString()}
+              </Text>
+            </View>
+            <Text className="font-bold text-gray-900 text-xl leading-tight mb-1">{item.title}</Text>
+            <Text className="text-primary-600 text-sm font-semibold">{item.company}</Text>
           </View>
-        </View>
-        {item.applicationCount !== undefined && (
-          <View className="bg-gradient-to-br from-primary-500 to-primary-600 px-4 py-2 rounded-full shadow-primary">
-            <Text className="text-white text-xs font-bold">
-              {item.applicationCount} candidature{item.applicationCount > 1 ? 's' : ''}
+
+          <View className={`items-center justify-center h-12 w-12 rounded-2xl ${(item.applicationCount || 0) > 0 ? 'bg-primary-50' : 'bg-gray-50'
+            }`}>
+            <Text className={`text-lg font-bold ${(item.applicationCount || 0) > 0 ? 'text-primary-600' : 'text-gray-400'
+              }`}>
+              {item.applicationCount || 0}
+            </Text>
+            <Text className={`text-[9px] font-medium ${(item.applicationCount || 0) > 0 ? 'text-primary-600' : 'text-gray-400'
+              }`}>
+              Candidats
             </Text>
           </View>
-        )}
-      </View>
-      <View className="flex-row items-center justify-between mt-4 pt-4 border-t border-gray-100">
-        <View className="flex-row items-center">
-          <Feather name="calendar" size={12} color="#9CA3AF" />
-          <Text className="text-gray-400 text-xs ml-1.5 font-medium">
-            Publié le {new Date(item.postedDate).toLocaleDateString('fr-FR')}
-          </Text>
         </View>
-        <View className="flex-row items-center gap-2">
+
+        <View className="flex-row items-center mb-5">
+          <View className="flex-row items-center bg-gray-50 px-3 py-1.5 rounded-full mr-2">
+            <Feather name="map-pin" size={12} color="#6B7280" />
+            <Text className="text-gray-600 text-xs ml-1.5 font-medium">{item.location}</Text>
+          </View>
+          <View className="flex-row items-center bg-gray-50 px-3 py-1.5 rounded-full">
+            <Feather name="briefcase" size={12} color="#6B7280" />
+            <Text className="text-gray-600 text-xs ml-1.5 font-medium">{item.type}</Text>
+          </View>
+        </View>
+
+        <View className="flex-row items-center justify-between pt-4 border-t border-gray-100">
+          {/* Primary Action */}
           <TouchableOpacity
-            onPress={() => router.push(`/recruiter/applications?jobId=${item.id}`)}
-            className="flex-row items-center bg-primary-50 px-3 py-1.5 rounded-full active:bg-primary-100"
-            activeOpacity={0.7}
+            onPress={(e) => {
+              e.stopPropagation();
+              router.push(`/recruiter/applications?jobId=${item.id}`);
+            }}
+            className="flex-row items-center"
           >
-            <Text className="text-primary-600 text-xs font-bold mr-1.5">Candidatures</Text>
-            <Feather name="chevron-right" size={14} color="#2563EB" />
+            <Text className="text-primary-600 font-bold text-sm mr-1">Gérer les candidatures</Text>
+            <Feather name="arrow-right" size={16} color={Colors.primary} />
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={(e) => handleArchive(item, e)}
-            className={`px-3 py-1.5 rounded-full active:opacity-80 ${
-              item.archived ? 'bg-yellow-50' : 'bg-gray-50'
-            }`}
-            activeOpacity={0.7}
-          >
-            <Feather 
-              name={item.archived ? 'archive' : 'archive'} 
-              size={14} 
-              color={item.archived ? '#F59E0B' : '#6B7280'} 
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={(e) => handleDelete(item, e)}
-            className="bg-red-50 px-3 py-1.5 rounded-full active:bg-red-100"
-            activeOpacity={0.7}
-          >
-            <Feather name="trash-2" size={14} color="#EF4444" />
-          </TouchableOpacity>
+
+          {/* Icon Actions */}
+          <View className="flex-row items-center gap-1">
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation();
+                router.push(`/job/${item.id}/edit`);
+              }}
+              className="h-10 w-10 items-center justify-center rounded-full bg-blue-50 active:bg-blue-100"
+            >
+              <Feather name="edit-2" size={18} color="#2563EB" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={(e) => handleArchive(item, e)}
+              className={`h-10 w-10 items-center justify-center rounded-full ${item.archived ? 'bg-amber-100' : 'bg-gray-100'
+                }`}
+            >
+              <Feather
+                name="archive"
+                size={18}
+                color={item.archived ? '#D97706' : '#4B5563'}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={(e) => handleDelete(item, e)}
+              className="h-10 w-10 items-center justify-center rounded-full bg-red-50 active:bg-red-100"
+            >
+              <Feather name="trash-2" size={18} color="#EF4444" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </TouchableOpacity>
@@ -220,73 +227,84 @@ export default function RecruiterJobsScreen() {
     return (
       <View className="flex-1 items-center justify-center bg-gray-50">
         <ActivityIndicator size="large" color={Colors.primary} />
-        <Text className="mt-4 text-gray-600">Chargement des offres...</Text>
       </View>
     );
   }
 
   return (
     <View className="flex-1 bg-gray-50">
-      <Stack.Screen 
-        options={{ 
-          title: 'Mes offres',
+      <Stack.Screen
+        options={{
+          title: 'Mes Offres',
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: '#F9FAFB' },
           headerRight: () => (
-            <View className="flex-row items-center mr-2">
-              <TouchableOpacity
-                onPress={() => setShowArchived(!showArchived)}
-                className="mr-3"
-              >
-                <Feather 
-                  name={showArchived ? 'eye-off' : 'eye'} 
-                  size={20} 
-                  color={showArchived ? Colors.primary : '#6B7280'} 
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => router.push('/job/new')}
-              >
-                <Feather name="plus" size={24} color={Colors.primary} />
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              onPress={() => router.push('/job/new')}
+              className="bg-primary-500 h-8 w-8 items-center justify-center rounded-full shadow-sm"
+            >
+              <Feather name="plus" size={20} color="white" />
+            </TouchableOpacity>
           ),
-        }} 
+        }}
       />
-      
-      {/* Filter Toggle */}
-      <View className="bg-white px-4 py-3 border-b border-gray-200">
+
+      {/* Filter Header */}
+      <View className="px-5 py-2 pb-4 bg-gray-50 z-10">
         <TouchableOpacity
           onPress={() => setShowArchived(!showArchived)}
-          className="flex-row items-center justify-between"
+          className={`flex-row items-center justify-between px-4 py-3 rounded-2xl border ${showArchived ? 'bg-primary-50 border-primary-100' : 'bg-white border-gray-200'
+            }`}
         >
-          <Text className="text-base font-semibold text-gray-900">
-            {showArchived ? 'Afficher toutes les offres' : 'Afficher les offres archivées'}
-          </Text>
-          <Feather 
-            name={showArchived ? 'eye-off' : 'archive'} 
-            size={20} 
-            color={Colors.primary} 
+          <View className="flex-row items-center">
+            <View className={`h-8 w-8 rounded-full items-center justify-center mr-3 ${showArchived ? 'bg-primary-100' : 'bg-gray-100'
+              }`}>
+              <Feather
+                name={showArchived ? 'eye' : 'archive'}
+                size={16}
+                color={showArchived ? Colors.primary : '#6B7280'}
+              />
+            </View>
+            <View>
+              <Text className="text-sm font-bold text-gray-900">
+                {showArchived ? 'Affichage : Tout' : 'Affichage : Actifs'}
+              </Text>
+              <Text className="text-xs text-gray-500">
+                {showArchived ? 'Inclus les offres archivées' : 'Masque les offres archivées'}
+              </Text>
+            </View>
+          </View>
+          <Feather
+            name={showArchived ? "toggle-right" : "toggle-left"}
+            size={24}
+            color={showArchived ? Colors.primary : "#9CA3AF"}
           />
         </TouchableOpacity>
       </View>
+
       <FlatList
         data={jobs}
         keyExtractor={(item) => item.id}
         renderItem={renderJobItem}
-        contentContainerStyle={{ padding: 16 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
         }
         ListEmptyComponent={
-          <View className="flex-1 items-center justify-center p-8">
-            <Feather name="briefcase" size={48} color="#9CA3AF" />
-            <Text className="mt-4 text-base text-gray-500 text-center">
-              Vous n'avez pas encore créé d'offres d'emploi.
+          <View className="flex-1 items-center justify-center pt-20">
+            <View className="h-24 w-24 bg-gray-100 rounded-full items-center justify-center mb-6">
+              <Feather name="layers" size={40} color="#9CA3AF" />
+            </View>
+            <Text className="text-xl font-bold text-gray-900 mb-2">Aucune offre</Text>
+            <Text className="text-gray-500 text-center px-10 mb-8 leading-6">
+              Vous n'avez pas encore publié d'offres d'emploi. Commencez dès maintenant !
             </Text>
             <TouchableOpacity
-              className="mt-6 bg-primary-500 px-6 py-3 rounded-xl"
+              className="bg-primary-500 px-8 py-4 rounded-2xl shadow-lg shadow-primary-500/30"
               onPress={() => router.push('/job/new')}
             >
-              <Text className="text-white font-semibold">Créer ma première offre</Text>
+              <Text className="text-white font-bold text-lg">Créer une offre</Text>
             </TouchableOpacity>
           </View>
         }
@@ -294,4 +312,3 @@ export default function RecruiterJobsScreen() {
     </View>
   );
 }
-
